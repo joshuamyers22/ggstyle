@@ -1,0 +1,69 @@
+# ggstyle: grey
+#
+# Grey panel, white gridlines. The ggplot2 theme_grey look, kept for fidelity and
+# because the panel fill genuinely helps when plotting light or low-contrast
+# series. Same colour cycle and same type scale as minimal, so switching themes
+# changes the surface and nothing else -- ggplot2 does the same.
+
+figure.facecolor:   white
+figure.edgecolor:   white
+figure.figsize:     7.0, 4.33
+figure.dpi:         110
+
+axes.facecolor:     EBEBEB
+axes.edgecolor:     EBEBEB
+axes.linewidth:     0.0
+axes.grid:          True
+axes.grid.axis:     both
+axes.grid.which:    both
+axes.axisbelow:     True
+axes.spines.top:    False
+axes.spines.right:  False
+axes.spines.left:   False
+axes.spines.bottom: False
+axes.titlesize:     12
+axes.titlelocation: left
+axes.titlepad:      10
+axes.titlecolor:    1A1A1A
+axes.labelsize:     10
+axes.labelcolor:    262626
+axes.labelpad:      6
+axes.prop_cycle:    cycler('color', ['0072B2', 'D55E00', '009E73', 'CC79A7', '56B4E9', 'E69F00', '8C8C8C', '4C3B7A'])
+
+grid.color:         FFFFFF
+grid.linewidth:     0.9
+grid.linestyle:     -
+grid.alpha:         1.0
+
+xtick.color:        4D4D4D
+xtick.labelcolor:   303030
+xtick.labelsize:    9
+xtick.direction:    out
+xtick.major.size:   0
+xtick.minor.size:   0
+xtick.major.pad:    5
+
+ytick.color:        4D4D4D
+ytick.labelcolor:   303030
+ytick.labelsize:    9
+ytick.direction:    out
+ytick.major.size:   0
+ytick.minor.size:   0
+ytick.major.pad:    5
+
+lines.linewidth:    1.5
+lines.solid_capstyle: round
+lines.markersize:   5
+
+legend.frameon:     False
+legend.fontsize:    9
+legend.title_fontsize: 9
+
+font.size:          10
+font.family:        sans-serif
+font.sans-serif:    DejaVu Sans, Helvetica Neue, Helvetica, Arial, sans-serif
+
+savefig.dpi:        200
+savefig.bbox:       tight
+savefig.facecolor:  white
+savefig.pad_inches: 0.1

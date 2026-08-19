@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ggstyle"
+version = "0.1a0"
+description = "A date axis for matplotlib that is easy to use and manipulate"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Joshua Myers", email = "joshua.myers22@gmail.com" }]
+keywords = ["matplotlib", "visualization", "dates", "ggplot2"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+    "matplotlib>=3.7",
+    "pandas>=2.0",
+    "numpy>=1.24",
+]
+
+[project.urls]
+Homepage = "https://github.com/joshuamyers22/ggstyle"
+Repository = "https://github.com/joshuamyers22/ggstyle"
+Issues = "https://github.com/joshuamyers22/ggstyle/issues"
+Changelog = "https://github.com/joshuamyers22/ggstyle/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+# polars is a *test* dependency only. Frame support is duck-typed, so
+# installing ggstyle never pulls polars in.
+dev = ["pytest>=7.0", "ruff", "mypy", "pandas-stubs", "polars>=1.0", "build", "twine"]
+polars = ["polars>=1.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ggstyle"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/examples",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+    "/SECURITY.md",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-config --strict-markers"
+
+[tool.ruff]
+line-length = 92
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+files = ["src"]
+# Not strict yet: the matplotlib artist APIs this leans on are loosely typed.
+# Tighten module by module rather than shipping a config that does not pass.
+check_untyped_defs = true
+warn_unused_configs = true
