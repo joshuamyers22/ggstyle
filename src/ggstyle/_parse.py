@@ -64,10 +64,13 @@ def to_offset(value: Any):
     if value is None:
         return None
     if isinstance(value, str):
+        normalized = normalize_alias(value)
         try:
-            return _pd_to_offset(value)
+            return _pd_to_offset(normalized)
         except ValueError:
-            return _pd_to_offset(normalize_alias(value))
+            # Preserve pandas' own error for aliases our compatibility map does
+            # not recognize.
+            return _pd_to_offset(value)
     return _pd_to_offset(value)
 
 
@@ -105,7 +108,11 @@ def to_timestamp(value: Any, side: str = "start") -> pd.Timestamp:
         except Exception:
             pass
         else:
-            return period.start_time if side == "start" else period.end_time
+            # matplotlib date numbers are floating-point microseconds at modern
+            # dates. A nanosecond period end can round into the next day on some
+            # pandas/Python combinations, so normalize to the finest precision
+            # matplotlib can represent reliably.
+            return period.start_time if side == "start" else period.end_time.floor("us")
         try:
             return pd.Timestamp(value)
         except Exception as exc:  # pragma: no cover - message path
