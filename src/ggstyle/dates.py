@@ -29,6 +29,7 @@ That is what keeps annotations honest when the mode changes.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
 import matplotlib.dates as mdates
@@ -52,11 +53,58 @@ _NUM_MIN, _NUM_MAX = -220_000, 200_000
 _MAX_TICKS = 10_000
 
 
-class DateAxis:
-    """A date-aware x axis bound to a matplotlib Axes.
+@dataclass
+class _Annotation:
+    """Store a replayable date-space annotation."""
 
-    Prefer :func:`dates` over constructing this directly; it caches one handle
-    per Axes so that repeated calls return the same object.
+    kind: Literal["vline", "span"]
+    dates: tuple[Any, ...]
+    label: str | None
+    kwargs: dict[str, Any]
+    artists: list[Any] = field(default_factory=list)
+
+
+class DateAxis:
+    """
+    Manage a date-aware x-axis bound to a matplotlib axes.
+
+    Obtain instances with :func:`dates` instead of constructing them directly.
+    The accessor caches one handle per axes, so repeated calls return the same
+    object.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes whose x-axis will be managed.
+    data : array-like, optional
+        Additional observed dates. Values must already have a datetime dtype or
+        be unambiguously date-like Python objects.
+    mode : {"show", "collapse"}, default "show"
+        Initial coordinate mode. ``"show"`` preserves calendar gaps;
+        ``"collapse"`` uses observation-ordinal positions.
+
+    Attributes
+    ----------
+    ax : matplotlib.axes.Axes
+        Bound matplotlib axes.
+
+    See Also
+    --------
+    dates : Create or retrieve a date-axis handle.
+    ggstyle.theme : Apply a scoped matplotlib theme.
+
+    Notes
+    -----
+    The handle updates tick locators when x-axis limits change. Importing
+    ``ggstyle`` never creates a handle or changes matplotlib global state.
+
+    Examples
+    --------
+    >>> import matplotlib.pyplot as plt
+    >>> import pandas as pd
+    >>> fig, ax = plt.subplots()
+    >>> _ = ax.plot(pd.date_range("2024-01-01", periods=10), range(10))
+    >>> handle = dates(ax).ticks("daily").fmt("day")
     """
 
     def __init__(self, ax: Axes, data: Any = None, *, mode: str = "show") -> None:
@@ -80,7 +128,7 @@ class DateAxis:
         self._grid_kwargs: dict[str, Any] = {}
         self._grid_artists: list[Any] = []
 
-        self._annotations: list[dict[str, Any]] = []
+        self._annotations: list[_Annotation] = []
         self._original_x: dict[int, np.ndarray] = {}
         self._refreshing = False
         self._trusted = False
@@ -157,12 +205,12 @@ class DateAxis:
 
     @property
     def mode(self) -> str:
-        """``"show"`` or ``"collapse"``."""
+        """Return the active coordinate mode."""
         return self._mode
 
     @property
     def observations(self) -> pd.DatetimeIndex:
-        """Sorted unique observed dates backing the collapsed axis."""
+        """Return sorted, unique dates backing the collapsed axis."""
         return pd.DatetimeIndex(mdates.num2date(self._nums)).tz_localize(None)
 
     def _require_observations(self, what: str) -> None:
@@ -216,20 +264,36 @@ class DateAxis:
         return nums
 
     def loc(self, date: Any, *, snap: bool = False, strict: bool = False) -> float:
-        """Axis position for ``date``. The escape-hatch primitive.
-
-        Given this, a caller can drop into raw matplotlib and stay correct in
-        either mode.
+        """
+        Return the axis position corresponding to a date.
 
         Parameters
         ----------
-        date
+        date : date-like
             Anything :func:`~ggstyle._parse.to_timestamp` accepts, including
             partial strings.
-        snap
+        snap : bool, default False
             Round to the nearest observed date rather than interpolating.
-        strict
+        strict : bool, default False
             Raise if ``date`` is not itself an observation.
+
+        Returns
+        -------
+        float
+            Position in the active coordinate system.
+
+        Raises
+        ------
+        KeyError
+            If ``strict`` is true and ``date`` was not observed.
+        RuntimeError
+            If strict lookup is requested but no observations are registered.
+
+        Notes
+        -----
+        This method is the escape hatch for native matplotlib operations in
+        collapsed mode. For example, ``ax.axvline(handle.loc(date))`` remains
+        correct after switching coordinate modes.
         """
         ts = to_timestamp(date)
         num = float(mdates.date2num(ts))
@@ -245,7 +309,19 @@ class DateAxis:
         return float(self._nums_to_pos(np.array([num]))[0])
 
     def date_at(self, position: float) -> pd.Timestamp:
-        """Inverse of :meth:`loc`: the date at an axis position."""
+        """
+        Return the date corresponding to an axis position.
+
+        Parameters
+        ----------
+        position : float
+            Position in the active coordinate system.
+
+        Returns
+        -------
+        pandas.Timestamp
+            Timezone-naive timestamp at ``position``.
+        """
         num = float(self._pos_to_nums(np.array([float(position)]))[0])
         return pd.Timestamp(mdates.num2date(num)).tz_localize(None)
 
@@ -270,7 +346,35 @@ class DateAxis:
         major: Any = None,
         minor: Any = None,
     ):
-        """Set where ticks go. Says nothing about what the labels look like.
+        """
+        Configure tick positions without changing label formatting.
+
+        Parameters
+        ----------
+        spec : str or Cadence, optional
+            Named cadence such as ``"monthly"`` or an offset alias.
+        every : str or pandas offset, optional
+            Explicit interval such as ``"3M"``.
+        n : int, optional
+            Approximate desired number of major ticks.
+        at : iterable of date-like, optional
+            Explicit major tick dates.
+        major : str or Cadence, optional
+            Keyword form of ``spec``.
+        minor : str, Cadence, or False, optional
+            Minor tick cadence. Use ``False`` to disable minor ticks.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+
+        Raises
+        ------
+        TypeError
+            If conflicting major tick specifications are supplied.
+        ValueError
+            If ``n`` is not a positive integer or the cadence is invalid.
 
         Examples
         --------
@@ -393,11 +497,30 @@ class DateAxis:
     # ------------------------------------------------------------------
 
     def fmt(self, spec: Any = None, *, major: Any = None, minor: Any = False):
-        """Set tick label format. Never moves a tick.
+        """
+        Configure tick labels without moving ticks.
 
-        Accepts a preset name (``"month-year"``, ``"quarter"``, ``"iso"``,
-        ``"year"``, ...), ``"concise"``, a strftime string, or a callable taking
-        one ``Timestamp``.
+        Parameters
+        ----------
+        spec : str or callable, optional
+            Preset name, ``strftime`` pattern, or callable accepting one
+            :class:`pandas.Timestamp`.
+        major : str or callable, optional
+            Keyword form of ``spec``.
+        minor : str, callable, or False, default False
+            Minor tick label format. The default leaves minor ticks unlabeled.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+
+        Raises
+        ------
+        TypeError
+            If both ``spec`` and ``major`` are supplied.
+        ValueError
+            If a named format is unknown.
         """
         if spec is not None and major is not None:
             raise TypeError("pass either spec or major=, not both")
@@ -408,8 +531,24 @@ class DateAxis:
         return self._refresh()
 
     def rotate(self, degrees: float = 45, *, ha: str | None = None):
-        """Rotate tick labels. Exists for when the caller insists.
+        """
+        Rotate major tick labels.
 
+        Parameters
+        ----------
+        degrees : float, default 45
+            Rotation in degrees.
+        ha : {"left", "center", "right"}, optional
+            Horizontal alignment. Defaults to ``"right"`` for nonzero rotation
+            and ``"center"`` otherwise.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+
+        Notes
+        -----
         Rotation is usually a symptom of bad tick selection; try ``.ticks(n=...)``
         or a coarser cadence first.
         """
@@ -423,7 +562,23 @@ class DateAxis:
         return self._refresh()
 
     def tz(self, zone: str | None):
-        """Set the display timezone. Changes labels only, never the data."""
+        """
+        Set the display timezone used for labels.
+
+        Parameters
+        ----------
+        zone : str or None
+            IANA timezone name. Use ``None`` to display naive UTC values.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+
+        Notes
+        -----
+        This operation changes labels only; it never changes artist data.
+        """
         self._tz = zone
         return self._refresh()
 
@@ -445,8 +600,33 @@ class DateAxis:
         last: Any = None,
         ytd: bool = False,
     ):
-        """Set the visible range, with partial-string parsing.
+        """
+        Set the visible date range.
 
+        Parameters
+        ----------
+        start : date-like, optional
+            Left bound. Partial strings expand to the start of their period.
+        end : date-like, optional
+            Right bound. Partial strings expand to the end of their period.
+        last : str or pandas offset, optional
+            Trailing window measured from the final observation.
+        ytd : bool, default False
+            Display the year containing the final observation through that
+            observation.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+
+        Raises
+        ------
+        RuntimeError
+            If ``last`` or ``ytd`` is requested without observations.
+
+        Notes
+        -----
         ``"2020"`` means the whole year and ``"2020-03"`` the whole month, so
         ``.zoom("2020", "2022")`` covers three complete years.
         """
@@ -471,7 +651,21 @@ class DateAxis:
         return self._refresh()
 
     def pad(self, left: Any = None, right: Any = None):
-        """Add breathing room at either end without touching the data."""
+        """
+        Extend the visible range without changing artist data.
+
+        Parameters
+        ----------
+        left : str or pandas offset, optional
+            Amount added before the current left limit.
+        right : str or pandas offset, optional
+            Amount added after the current right limit.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+        """
         lo, hi = self._visible_range()
         if left is not None:
             lo = lo - to_offset(left)
@@ -487,7 +681,24 @@ class DateAxis:
     # ------------------------------------------------------------------
 
     def collapse(self):
-        """Switch to an observation-ordinal axis: unobserved dates get no space."""
+        """
+        Switch to observation-ordinal coordinates.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+
+        Raises
+        ------
+        RuntimeError
+            If no observations are registered.
+
+        Notes
+        -----
+        Only line artists are remapped in version 0.1. See the project pitfalls
+        guide before using collections such as scatter plots.
+        """
         if self._mode == "collapse":
             return self
         self._require_observations("collapse()")
@@ -504,7 +715,14 @@ class DateAxis:
         return self.zoom(lo, hi)
 
     def expand(self):
-        """Switch back to a true datetime axis, restoring gaps."""
+        """
+        Switch to calendar coordinates and restore gaps.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+        """
         if self._mode == "show":
             return self
         lo, hi = self._visible_range()
@@ -520,7 +738,7 @@ class DateAxis:
 
     def _remember_original_x(self) -> None:
         annotation_ids = {
-            id(artist) for entry in self._annotations for artist in entry["artists"]
+            id(artist) for entry in self._annotations for artist in entry.artists
         }
         for line in self.ax.lines:
             if id(line) in annotation_ids or id(line) in self._original_x:
@@ -534,29 +752,53 @@ class DateAxis:
     # ------------------------------------------------------------------
 
     def vline(self, date: Any, label: str | None = None, **kwargs):
-        """Vertical line at ``date``, correct in either mode."""
+        """
+        Draw a vertical line in date coordinates.
+
+        Parameters
+        ----------
+        date : date-like
+            Date at which to draw the line.
+        label : str, optional
+            Text drawn near the top of the axes.
+        **kwargs
+            Additional keyword arguments passed to
+            :meth:`matplotlib.axes.Axes.axvline`.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+        """
         self._annotations.append(
-            {
-                "kind": "vline",
-                "args": (date,),
-                "label": label,
-                "kwargs": kwargs,
-                "artists": [],
-            }
+            _Annotation("vline", (date,), label, kwargs)
         )
         self._draw_annotation(self._annotations[-1])
         return self
 
     def span(self, start: Any, end: Any, label: str | None = None, **kwargs):
-        """Shaded region between two dates, correct in either mode."""
+        """
+        Draw a shaded region in date coordinates.
+
+        Parameters
+        ----------
+        start : date-like
+            Start of the region.
+        end : date-like
+            End of the region.
+        label : str, optional
+            Text drawn near the top of the axes.
+        **kwargs
+            Additional keyword arguments passed to
+            :meth:`matplotlib.axes.Axes.axvspan`.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+        """
         self._annotations.append(
-            {
-                "kind": "span",
-                "args": (start, end),
-                "label": label,
-                "kwargs": kwargs,
-                "artists": [],
-            }
+            _Annotation("span", (start, end), label, kwargs)
         )
         self._draw_annotation(self._annotations[-1])
         return self
@@ -569,38 +811,57 @@ class DateAxis:
         label: str | None = None,
         **kwargs,
     ):
-        """Many shaded regions from a DataFrame of events."""
+        """
+        Draw multiple shaded regions from an event table.
+
+        Parameters
+        ----------
+        frame : pandas.DataFrame
+            Event table containing start and end columns.
+        start : str, default "start"
+            Name of the start-date column.
+        end : str, default "end"
+            Name of the end-date column.
+        label : str, optional
+            Name of a column containing annotation text.
+        **kwargs
+            Additional keyword arguments forwarded to :meth:`span`.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+        """
         for _, row in frame.iterrows():
             text = str(row[label]) if label is not None else None
             self.span(row[start], row[end], label=text, **kwargs)
         return self
 
-    def _draw_annotation(self, entry: dict[str, Any]) -> None:
-        kwargs = dict(entry["kwargs"])
-        label = entry["label"]
+    def _draw_annotation(self, entry: _Annotation) -> None:
+        kwargs = dict(entry.kwargs)
 
-        if entry["kind"] == "vline":
+        if entry.kind == "vline":
             kwargs.setdefault("color", "0.35")
             kwargs.setdefault("linewidth", 1.0)
             kwargs.setdefault("linestyle", "--")
-            position = self.loc(entry["args"][0])
-            entry["artists"].append(self.ax.axvline(position, **kwargs))
+            position = self.loc(entry.dates[0])
+            entry.artists.append(self.ax.axvline(position, **kwargs))
             text_x = position
         else:
             kwargs.setdefault("color", "0.85")
             kwargs.setdefault("alpha", 0.5)
             kwargs.setdefault("linewidth", 0)
-            left = self.loc(entry["args"][0])
-            right = self.loc(entry["args"][1])
-            entry["artists"].append(self.ax.axvspan(left, right, **kwargs))
+            left = self.loc(entry.dates[0])
+            right = self.loc(entry.dates[1])
+            entry.artists.append(self.ax.axvspan(left, right, **kwargs))
             text_x = (left + right) / 2
 
-        if label:
-            entry["artists"].append(
+        if entry.label:
+            entry.artists.append(
                 self.ax.text(
                     text_x,
                     0.98,
-                    label,
+                    entry.label,
                     transform=self.ax.get_xaxis_transform(),
                     ha="center",
                     va="top",
@@ -612,9 +873,9 @@ class DateAxis:
 
     def _replay_annotations(self) -> None:
         for entry in self._annotations:
-            for artist in entry["artists"]:
+            for artist in entry.artists:
                 artist.remove()
-            entry["artists"] = []
+            entry.artists.clear()
             self._draw_annotation(entry)
 
     # ------------------------------------------------------------------
@@ -622,8 +883,24 @@ class DateAxis:
     # ------------------------------------------------------------------
 
     def grid(self, spec: Any = None, **kwargs):
-        """Gridlines at a cadence independent of the ticks.
+        """
+        Configure gridlines independently of ticks.
 
+        Parameters
+        ----------
+        spec : str, Cadence, or False, optional
+            Grid cadence. Use ``False`` to remove managed gridlines.
+        **kwargs
+            Additional keyword arguments passed to
+            :meth:`matplotlib.axes.Axes.axvline`.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+
+        Examples
+        --------
         ``.grid(False)`` removes them; ``.grid("yearly")`` draws them once a year
         regardless of how often ticks appear.
         """
@@ -749,7 +1026,8 @@ def _minor_below(cadence: _cadence.Cadence) -> _cadence.Cadence | None:
 def dates(
     ax: Axes | None = None, data: Any = None, *, mode: str | None = None
 ) -> DateAxis:
-    """Get the :class:`DateAxis` for ``ax``, creating or adopting one.
+    """
+    Return the date-axis handle for a matplotlib axes.
 
     Works on any Axes, including plots this package never made::
 
@@ -759,14 +1037,30 @@ def dates(
 
     Parameters
     ----------
-    ax
+    ax : matplotlib.axes.Axes, optional
         Target Axes. Defaults to the current one.
-    data
+    data : array-like, optional
         Optional dates to register as observations, in addition to whatever is
         already plotted. Needed only when collapsing an axis whose dates are not
         recoverable from its artists.
-    mode
+    mode : {"show", "collapse"}, optional
         ``"show"`` or ``"collapse"``. Omit to leave an existing handle alone.
+
+    Returns
+    -------
+    DateAxis
+        Cached handle bound to ``ax``.
+
+    Raises
+    ------
+    TypeError
+        If the target does not appear to use a date x-axis.
+    ValueError
+        If ``mode`` is invalid.
+
+    Notes
+    -----
+    Repeated calls for the same axes return the same object.
     """
     if mode not in (None, "show", "collapse"):
         raise ValueError(f"mode must be 'show' or 'collapse', got {mode!r}")

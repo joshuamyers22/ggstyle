@@ -20,7 +20,7 @@ import pandas as pd
 
 from ._parse import to_timestamp
 
-__all__ = ["to_datetime_index", "column"]
+__all__ = ["column", "to_datetime_index"]
 
 
 def _module_root(obj: Any) -> str:
@@ -41,8 +41,27 @@ def _is_frame(obj: Any) -> bool:
 
 
 def column(frame: Any, name: str) -> Any:
-    """Pull a column out of a pandas or polars frame by name.
+    """Return a named column from a dataframe-like object.
 
+    Parameters
+    ----------
+    frame : dataframe-like
+        Object supporting string-based column access.
+    name : str
+        Column name.
+
+    Returns
+    -------
+    array-like
+        Selected column.
+
+    Raises
+    ------
+    KeyError
+        If ``name`` cannot be selected.
+
+    Notes
+    -----
     Small helper so callers can write ``column(df, "date")`` without branching on
     which library the frame came from. Both libraries happen to support
     ``frame[name]``; this exists to give a clear error when they do not.
@@ -55,6 +74,16 @@ def column(frame: Any, name: str) -> Any:
 
 def to_datetime_index(data: Any) -> pd.DatetimeIndex:
     """Coerce ``data`` to a timezone-naive DatetimeIndex.
+
+    Parameters
+    ----------
+    data : array-like
+        One-dimensional datetime values.
+
+    Returns
+    -------
+    pandas.DatetimeIndex
+        Timezone-naive values. Aware inputs are converted to UTC first.
 
     Raises
     ------

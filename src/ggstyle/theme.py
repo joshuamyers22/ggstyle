@@ -16,7 +16,7 @@ from types import TracebackType
 
 import matplotlib.pyplot as plt
 
-__all__ = ["use_theme", "theme", "available_themes", "DEFAULT_THEME"]
+__all__ = ["DEFAULT_THEME", "available_themes", "theme", "use_theme"]
 
 #: Themes in preference order. ``minimal`` is the default; ``grey`` is the
 #: ggplot2 theme_grey analogue, kept for fidelity.
@@ -41,7 +41,27 @@ _THEME_DIR = Path(__file__).parent / "themes"
 
 
 def available_themes() -> list[str]:
-    """Theme names, in preference order. The first is the default."""
+    """
+    Return available theme names in preference order.
+
+    Theme aliases are excluded. The first entry is the default used by
+    :func:`use_theme` and :class:`theme`.
+
+    Returns
+    -------
+    list of str
+        Canonical names with the default theme first.
+
+    See Also
+    --------
+    stylesheet : Return the stylesheet for a theme.
+    use_theme : Apply a theme process-wide.
+
+    Examples
+    --------
+    >>> available_themes()
+    ['minimal', 'grey']
+    """
     return list(_THEMES)
 
 
@@ -56,8 +76,36 @@ def _canonical(name: str) -> str:
 
 
 def stylesheet(name: str = DEFAULT_THEME) -> Path:
-    """Path to a theme's ``.mplstyle`` file.
+    """
+    Return the path to a packaged matplotlib stylesheet.
 
+    Accepted aliases are normalized to one of the names returned by
+    :func:`available_themes`.
+
+    Parameters
+    ----------
+    name : str, default "minimal"
+        Theme name or accepted alias.
+
+    Returns
+    -------
+    pathlib.Path
+        Existing stylesheet path.
+
+    Raises
+    ------
+    ValueError
+        If ``name`` is unknown.
+    FileNotFoundError
+        If the installed package is missing the requested stylesheet.
+
+    See Also
+    --------
+    available_themes : Return canonical theme names.
+    use_theme : Apply a stylesheet process-wide.
+
+    Examples
+    --------
     Useful on its own: ``plt.style.use(gs.stylesheet())`` works without importing
     anything else from this package.
     """
@@ -68,23 +116,59 @@ def stylesheet(name: str = DEFAULT_THEME) -> Path:
 
 
 def use_theme(name: str = DEFAULT_THEME) -> None:
-    """Apply a theme process-wide.
+    """
+    Apply a theme to matplotlib process-wide.
 
+    This function delegates to matplotlib's style system and intentionally
+    changes global ``rcParams``.
+
+    Parameters
+    ----------
+    name : str, default "minimal"
+        Theme name or accepted alias.
+
+    See Also
+    --------
+    theme : Apply a theme temporarily.
+    stylesheet : Return a theme's stylesheet path.
+
+    Notes
+    -----
     ``gs.use_theme()`` applies ``"minimal"``; ``gs.use_theme("grey")`` applies the
     ggplot2-style grey panel. ``"gray"`` is accepted for ``"grey"``.
+
+    Examples
+    --------
+    >>> use_theme("minimal")
     """
     plt.style.use(str(stylesheet(name)))
 
 
 class theme:
-    """Apply a theme for the duration of a block, then restore exactly.
+    """
+    Temporarily apply a matplotlib theme.
+
+    Parameters
+    ----------
+    name : str, default "minimal"
+        Theme name or accepted alias.
+
+    See Also
+    --------
+    use_theme : Apply a theme process-wide.
+    stylesheet : Return a theme's stylesheet path.
+
+    Notes
+    -----
+    Wraps ``matplotlib.pyplot.style.context``, so every rcParam is restored
+    on exit including ones the caller changed inside the block.
+
+    Examples
+    --------
+    Use the context manager around figure creation::
 
         with gs.theme("grey"):
             fig, ax = plt.subplots()
-            ...
-
-    Wraps :func:`matplotlib.pyplot.style.context`, so every rcParam is restored
-    on exit including ones the caller changed inside the block.
     """
 
     def __init__(self, name: str = DEFAULT_THEME) -> None:

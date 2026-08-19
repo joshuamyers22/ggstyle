@@ -193,3 +193,11 @@ mypy src
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete development workflow and
 [SECURITY.md](SECURITY.md) for vulnerability reporting.
+
+The structured documentation follows the same user-guide, API-reference, pitfalls, and
+release-note separation used by statsmodels. Build it locally with:
+
+```bash
+pip install -e ".[docs]"
+python -m sphinx -W --keep-going -b html docs/source docs/build/html
+```

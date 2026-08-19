@@ -19,13 +19,13 @@ from .theme import DEFAULT_THEME, available_themes, stylesheet, theme, use_theme
 
 __version__ = "0.1a0"
 __all__ = [
-    "dates",
-    "DateAxis",
-    "Cadence",
-    "use_theme",
-    "theme",
-    "available_themes",
-    "stylesheet",
     "DEFAULT_THEME",
+    "Cadence",
+    "DateAxis",
     "__version__",
+    "available_themes",
+    "dates",
+    "stylesheet",
+    "theme",
+    "use_theme",
 ]

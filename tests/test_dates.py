@@ -4,10 +4,10 @@ import pandas as pd
 import pytest
 
 matplotlib.use("Agg")
-import matplotlib.dates as mdates  # noqa: E402
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 
-import ggstyle as gs  # noqa: E402
+import ggstyle as gs
 
 
 @pytest.fixture
@@ -284,18 +284,18 @@ class TestCollapse:
 class TestAnnotations:
     def test_vline_lands_correctly_in_both_modes(self, ax):
         handle = gs.dates(ax).vline("2020-06-15", label="event")
-        line = handle._annotations[0]["artists"][0]
+        line = handle._annotations[0].artists[0]
         assert line.get_xdata()[0] == pytest.approx(handle.loc("2020-06-15"))
         handle.collapse()
-        line = handle._annotations[0]["artists"][0]
+        line = handle._annotations[0].artists[0]
         assert line.get_xdata()[0] == pytest.approx(handle.loc("2020-06-15"))
 
     def test_span_replays_on_mode_change(self, ax):
         handle = gs.dates(ax).span("2020-02-19", "2020-03-23", label="drawdown")
-        rect = handle._annotations[0]["artists"][0]
+        rect = handle._annotations[0].artists[0]
         before = rect.get_x()
         handle.collapse()
-        rect = handle._annotations[0]["artists"][0]
+        rect = handle._annotations[0].artists[0]
         assert rect.get_x() != pytest.approx(before)
         assert rect.get_x() == pytest.approx(handle.loc("2020-02-19"))
         assert rect.get_x() + rect.get_width() == pytest.approx(

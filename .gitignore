@@ -6,7 +6,11 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.coverage
+htmlcov/
 build/
 dist/
+docs/build/
+docs/source/generated/
 *.tar.gz
 .release-inputs/

@@ -14,7 +14,7 @@ from collections.abc import Callable, Sequence
 
 import pandas as pd
 
-__all__ = ["PRESETS", "resolve", "base_preset_for"]
+__all__ = ["PRESETS", "base_preset_for", "resolve"]
 
 Labeller = Callable[[Sequence[pd.Timestamp]], list[str]]
 

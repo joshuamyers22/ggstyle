@@ -38,8 +38,9 @@ Changelog = "https://github.com/joshuamyers22/ggstyle/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 # polars is a *test* dependency only. Frame support is duck-typed, so
 # installing ggstyle never pulls polars in.
-dev = ["pytest>=7.0", "ruff", "mypy", "pandas-stubs", "polars>=1.0", "build", "twine"]
+dev = ["pytest>=7.0", "pytest-cov", "ruff", "mypy", "pandas-stubs", "polars>=1.0", "build", "twine"]
 polars = ["polars>=1.0"]
+docs = ["sphinx>=7", "numpydoc>=1.6", "pydata-sphinx-theme>=0.15"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ggstyle"]
@@ -48,7 +49,9 @@ packages = ["src/ggstyle"]
 include = [
     "/src",
     "/tests",
+    "/tools",
     "/examples",
+    "/docs/source",
     "/README.md",
     "/LICENSE",
     "/CHANGELOG.md",
@@ -60,12 +63,22 @@ include = [
 testpaths = ["tests"]
 addopts = "--strict-config --strict-markers"
 
+[tool.coverage.run]
+branch = true
+source = ["ggstyle"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+
 [tool.ruff]
 line-length = 92
 src = ["src", "tests"]
+target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["B", "C4", "E", "F", "I", "PERF", "PIE", "RET", "RUF", "SIM", "UP", "W"]
 
 [tool.mypy]
 files = ["src"]

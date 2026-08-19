@@ -12,7 +12,9 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-__all__ = ["Cadence", "resolve", "auto_cadence", "LADDER"]
+from ._parse import to_offset
+
+__all__ = ["LADDER", "Cadence", "auto_cadence", "resolve"]
 
 _UNITS = ("minute", "hour", "day", "week", "month", "quarter", "year")
 
@@ -59,18 +61,36 @@ _PERIOD_ALIAS = {
 
 @dataclass(frozen=True)
 class Cadence:
-    """Where ticks go.
+    """
+    Describe a recurring tick cadence.
 
-    Attributes
+    A cadence controls tick placement only. Label text is configured separately
+    by :meth:`ggstyle.DateAxis.fmt`.
+
+    Parameters
     ----------
-    unit
+    unit : {"minute", "hour", "day", "week", "month", "quarter", "year"}
         One of minute, hour, day, week, month, quarter, year.
-    interval
+    interval : int, default 1
         Every *n*-th unit.
-    anchor
+    anchor : {"start", "end"}, default "start"
         ``"start"`` or ``"end"`` of each period. Month-start vs. month-end is the
         difference between labels that line up with observations and labels that
         float between them.
+
+    Raises
+    ------
+    ValueError
+        If the unit, interval, or anchor is invalid.
+
+    See Also
+    --------
+    ggstyle.DateAxis.ticks : Apply a cadence to an axis.
+
+    Examples
+    --------
+    >>> Cadence("month", interval=3)
+    Cadence(unit='month', interval=3, anchor='start')
     """
 
     unit: str
@@ -89,17 +109,18 @@ class Cadence:
 
     @property
     def freq(self) -> str:
-        """pandas offset alias for :func:`pandas.date_range`."""
+        """Return the pandas offset alias used to generate ticks."""
         alias = _ALIAS[(self.unit, self.anchor)]
         return alias if self.interval == 1 else f"{self.interval}{alias}"
 
     @property
     def period_alias(self) -> str:
-        """pandas Period alias, for grouping observations in collapsed mode."""
+        """Return the pandas period alias used to group observations."""
         return _PERIOD_ALIAS[self.unit]
 
     @property
     def approx_seconds(self) -> float:
+        """Return the approximate cadence duration in seconds."""
         return _UNIT_SECONDS[self.unit] * self.interval
 
     def __str__(self) -> str:  # pragma: no cover - display only
@@ -175,8 +196,6 @@ def resolve(spec) -> Cadence:
 
 def _from_alias(alias: str) -> Cadence:
     """Interpret an offset alias such as ``"3M"`` or ``"6ME"`` as a Cadence."""
-    from ._parse import to_offset
-
     offset = to_offset(alias)
     interval = int(getattr(offset, "n", 1)) or 1
     name = type(offset).__name__

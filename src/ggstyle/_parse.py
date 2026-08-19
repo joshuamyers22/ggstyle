@@ -19,7 +19,7 @@ from typing import Any
 import pandas as pd
 from pandas.tseries.frequencies import to_offset as _pd_to_offset
 
-__all__ = ["to_timestamp", "to_offset", "normalize_alias", "is_date_like"]
+__all__ = ["is_date_like", "normalize_alias", "to_offset", "to_timestamp"]
 
 
 #: Legacy alias -> modern alias. Applied to the letter part of an offset string.

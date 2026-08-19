@@ -6,10 +6,10 @@ import pandas as pd
 import pytest
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
-import ggstyle as gs  # noqa: E402
-from ggstyle._frames import to_datetime_index  # noqa: E402
+import ggstyle as gs
+from ggstyle._frames import to_datetime_index
 
 polars = pytest.importorskip("polars")
 
@@ -196,5 +196,5 @@ class TestThemes:
             fig, ax = plt.subplots()
             ax.plot(days, np.arange(len(days), dtype=float))
             gs.dates(ax).ticks("quarterly").fmt("quarter")
-            assert [t.get_text() for t in ax.get_xticklabels()][0] == "Q1 2020"
+            assert next(t.get_text() for t in ax.get_xticklabels()) == "Q1 2020"
             plt.close(fig)
