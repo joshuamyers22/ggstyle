@@ -44,7 +44,14 @@ ax.plot(df["date"], df["close"])          # plain matplotlib, seaborn, or df.plo
 gs.dates(ax).ticks("quarterly").fmt("month-year").zoom("2020", "2022")
 ```
 
-Every method returns the handle, so calls chain.
+Configuration and drawing methods return the handle, so calls chain.
+
+Axis semantics are also available as structured data rather than only rendered output:
+
+```python
+summary = gs.dates(ax).summary()
+caption = gs.dates(ax).caption(add=True)
+```
 
 ### Ticks — where they go
 
@@ -163,6 +170,21 @@ separate concern handled by `.tz()`.
 
 Two things are deliberately *not* guessed: a whole DataFrame passed where a column was
 meant, and a string column that might be dates. Both raise.
+
+Missing values in explicit date data also raise unless exclusion is requested with
+``missing="drop"``. The number excluded remains available through ``.summary()`` and in
+generated captions.
+
+## Multiple panels
+
+Synchronize comparable axes with a common observation registry and limits:
+
+```python
+handles = gs.sync_dates(axes, mode="collapse", limits="union")
+```
+
+This prevents the same date from receiving different ordinal positions in independently
+collapsed panels.
 
 ## Design rules
 

@@ -16,6 +16,7 @@ Start here
 
    gettingstarted
    user-guide
+   principles
    pitfalls
    api
    release

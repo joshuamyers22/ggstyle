@@ -3,8 +3,9 @@
 > Name settled: `ggstyle`.
 
 > Status (2026-08-19): the public `0.1a0` alpha contains the standalone date axis and
-> themes. The `line()`, palette, formatter, label, and save APIs below remain roadmap
-> items for `0.1b` or later; they are not part of the current package.
+> themes, structured axis summaries, explicit missing-date handling, generated captions,
+> and multi-panel date synchronization. The `line()`, palette, formatter, label, and save
+> APIs below remain roadmap items for `0.1b` or later.
 
 ## 1. Goal
 
@@ -353,7 +354,8 @@ figure without raising. Hypothesis for the input generation.
 **v0.1a — The date axis, plus themes** *(built)*
 `gs.dates(ax)` with the full §6 surface: adoption of foreign Axes, ticks, fmt, zoom, gaps,
 `.loc`/`.vline`/`.span`/`.grid`, auto-cadence. Frame adapter for pandas and polars. Two
-stylesheets with `use_theme`/`theme`. 126 tests.
+stylesheets with `use_theme`/`theme`. Structured `AxisSummary`, generated semantic
+captions, explicit missing-date policy, and `sync_dates()` for comparable panels.
 *Done when:* it improves a plot made by raw `ax.plot()` or pandas `.plot()` with a single
 call, and the §6.7 cadence table passes end to end. ✓
 
@@ -365,13 +367,16 @@ no post-hoc matplotlib calls.
 
 **v0.2 — Facets and direct labels**
 `facet="col"` with wrapped grids, shared/free axes, strip labels. End-of-line labeling with
-collision avoidance.
+collision avoidance. Build on `sync_dates()` rather than adding separate grouped plotting
+functions.
 *Done when:* a 12-panel facet grid of tickers renders with readable strips and no
 overlapping labels.
 
 **v0.3 — More geoms**
 `area()`, `step()`, `ribbon()` (confidence/prediction bands), `scatter()`. Same signature
-shape as `line()`.
+shape as `line()`. `ribbon()` accepts explicit lower and upper columns and a caller-supplied
+interval label; it does not fit a model or infer the statistical meaning of the bounds.
+Collapsed-mode support is blocked until collection remapping is correct.
 
 **v0.4 — Rich text (`ggtext` port)**
 `_richtext` parse/measure/layout/draw, then `richtext()`, `textbox()`, `enrich()`,

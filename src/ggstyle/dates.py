@@ -4,7 +4,7 @@
 adopting an existing plot. Adoption is the point: it works on figures this
 package never made, so the date axis is useful on its own.
 
-Every method returns ``self``, so calls chain::
+Configuration and drawing methods return ``self``, so calls chain::
 
     gs.dates(ax).ticks("quarterly").fmt("month-year").zoom("2020", "2022")
 
@@ -43,7 +43,7 @@ from . import _cadence, _formats
 from ._frames import to_datetime_index as _as_datetime_index
 from ._parse import to_offset, to_timestamp
 
-__all__ = ["DateAxis", "dates"]
+__all__ = ["AxisSummary", "DateAxis", "dates", "sync_dates"]
 
 _ATTR = "_ggstyle_date_axis"
 
@@ -51,6 +51,51 @@ _ATTR = "_ggstyle_date_axis"
 #: Roughly years 1400 to 2500 either side of the 1970 epoch.
 _NUM_MIN, _NUM_MAX = -220_000, 200_000
 _MAX_TICKS = 10_000
+
+MissingPolicy = Literal["raise", "drop"]
+
+
+@dataclass(frozen=True)
+class AxisSummary:
+    """
+    Describe the data and configuration behind a date axis.
+
+    Parameters
+    ----------
+    mode : {"show", "collapse"}
+        Active coordinate mode.
+    observations : int
+        Number of unique, non-missing observed dates.
+    start : pandas.Timestamp or None
+        First observed date.
+    end : pandas.Timestamp or None
+        Final observed date.
+    inferred_frequency : str or None
+        Pandas frequency alias, or a median-spacing description for irregular data.
+    major_cadence : str
+        Resolved major tick cadence or ``"explicit"``.
+    minor_cadence : str or None
+        Resolved minor tick cadence.
+    timezone : str or None
+        Label display timezone.
+    missing_values : int
+        Number of explicitly supplied missing dates that were dropped.
+
+    Notes
+    -----
+    Summaries contain plain values and can be logged, tested, or serialized without
+    inspecting matplotlib artists.
+    """
+
+    mode: Literal["show", "collapse"]
+    observations: int
+    start: pd.Timestamp | None
+    end: pd.Timestamp | None
+    inferred_frequency: str | None
+    major_cadence: str
+    minor_cadence: str | None
+    timezone: str | None
+    missing_values: int
 
 
 @dataclass
@@ -82,6 +127,8 @@ class DateAxis:
     mode : {"show", "collapse"}, default "show"
         Initial coordinate mode. ``"show"`` preserves calendar gaps;
         ``"collapse"`` uses observation-ordinal positions.
+    missing : {"raise", "drop"}, default "raise"
+        Policy for missing values in explicitly supplied ``data``.
 
     Attributes
     ----------
@@ -107,7 +154,14 @@ class DateAxis:
     >>> handle = dates(ax).ticks("daily").fmt("day")
     """
 
-    def __init__(self, ax: Axes, data: Any = None, *, mode: str = "show") -> None:
+    def __init__(
+        self,
+        ax: Axes,
+        data: Any = None,
+        *,
+        mode: str = "show",
+        missing: MissingPolicy = "raise",
+    ) -> None:
         if mode not in ("show", "collapse"):
             raise ValueError(f"mode must be 'show' or 'collapse', got {mode!r}")
         self.ax = ax
@@ -127,13 +181,15 @@ class DateAxis:
         self._grid_spec: Any = None
         self._grid_kwargs: dict[str, Any] = {}
         self._grid_artists: list[Any] = []
+        self._caption_artist: Any | None = None
 
         self._annotations: list[_Annotation] = []
         self._original_x: dict[int, np.ndarray] = {}
         self._refreshing = False
         self._trusted = False
+        self._missing_values = 0
 
-        self._ingest(data)
+        self._ingest(data, missing=missing)
         self._validate()
 
         setattr(ax, _ATTR, self)
@@ -148,12 +204,23 @@ class DateAxis:
     # construction helpers
     # ------------------------------------------------------------------
 
-    def _ingest(self, data: Any) -> None:
+    def _ingest(self, data: Any, *, missing: MissingPolicy = "raise") -> None:
         """Collect observed dates from explicit input and from existing artists."""
-        nums: list[np.ndarray] = []
+        if missing not in ("raise", "drop"):
+            raise ValueError(f"missing must be 'raise' or 'drop', got {missing!r}")
+        nums: list[np.ndarray] = [self._nums.copy()] if self._nums.size else []
 
         if data is not None:
             index = _as_datetime_index(data)
+            missing_count = int(np.count_nonzero(index.isna()))
+            if missing_count and missing == "raise":
+                raise ValueError(
+                    f"date data contains {missing_count} missing value(s); "
+                    "pass missing='drop' to exclude them explicitly"
+                )
+            if missing_count:
+                self._missing_values += missing_count
+                index = index[index.notna()]
             nums.append(mdates.date2num(index))
             self._trusted = True
 
@@ -212,6 +279,101 @@ class DateAxis:
     def observations(self) -> pd.DatetimeIndex:
         """Return sorted, unique dates backing the collapsed axis."""
         return pd.DatetimeIndex(mdates.num2date(self._nums)).tz_localize(None)
+
+    def summary(self) -> AxisSummary:
+        """
+        Return structured information about the date axis.
+
+        Returns
+        -------
+        AxisSummary
+            Immutable snapshot of observations and active configuration.
+
+        See Also
+        --------
+        caption : Format the summary for display on a figure.
+        """
+        observations = self.observations
+        start = observations[0] if len(observations) else None
+        end = observations[-1] if len(observations) else None
+
+        lo, hi = self._visible_range()
+        span = abs(hi - lo)
+        major = self._summary_major_cadence(span)
+        minor = self._summary_minor_cadence(span)
+        return AxisSummary(
+            mode=cast(Literal["show", "collapse"], self._mode),
+            observations=len(observations),
+            start=start,
+            end=end,
+            inferred_frequency=_infer_frequency(observations),
+            major_cadence=major,
+            minor_cadence=minor,
+            timezone=self._tz,
+            missing_values=self._missing_values,
+        )
+
+    def _summary_major_cadence(self, span: pd.Timedelta) -> str:
+        if self._explicit_ticks is not None:
+            return "explicit"
+        return str(self._resolve_major(span))
+
+    def _summary_minor_cadence(self, span: pd.Timedelta) -> str | None:
+        if self._explicit_ticks is not None:
+            return None
+        major = self._resolve_major(span)
+        minor = self._resolve_minor(span, major)
+        return str(minor) if minor is not None else None
+
+    def caption(self, *, add: bool = False, **kwargs: Any) -> str:
+        """
+        Format a concise description of axis semantics.
+
+        Parameters
+        ----------
+        add : bool, default False
+            Add the caption below the axes when true.
+        **kwargs
+            Additional keyword arguments passed to :meth:`matplotlib.axes.Axes.text`
+            when ``add`` is true.
+
+        Returns
+        -------
+        str
+            Generated caption text.
+
+        Notes
+        -----
+        Repeated calls with ``add=True`` replace the previously managed caption.
+        """
+        info = self.summary()
+        parts = [f"{info.observations:,} observations"]
+        if info.start is not None and info.end is not None:
+            parts.append(_format_date_range(info.start, info.end))
+        parts.append(
+            "unobserved dates collapsed"
+            if info.mode == "collapse"
+            else "calendar gaps shown"
+        )
+        if info.missing_values:
+            parts.append(f"{info.missing_values:,} missing excluded")
+        if info.timezone:
+            parts.append(f"labels: {info.timezone}")
+        text = " · ".join(parts)
+
+        if add:
+            if self._caption_artist is not None:
+                self._caption_artist.remove()
+            style: dict[str, Any] = {
+                "ha": "left",
+                "va": "top",
+                "fontsize": "small",
+                "color": "0.35",
+                "transform": self.ax.transAxes,
+            }
+            style.update(kwargs)
+            self._caption_artist = self.ax.text(0, -0.14, text, **style)
+        return text
 
     def _require_observations(self, what: str) -> None:
         if self._nums.size == 0:
@@ -1023,8 +1185,111 @@ def _minor_below(cadence: _cadence.Cadence) -> _cadence.Cadence | None:
     return below.get(cadence.unit)
 
 
+def _infer_frequency(observations: pd.DatetimeIndex) -> str | None:
+    """Infer a stable frequency description from unique observations."""
+    if len(observations) < 2:
+        return None
+    if len(observations) >= 3:
+        try:
+            inferred = pd.infer_freq(observations)
+        except ValueError:
+            inferred = None
+        if inferred is not None:
+            return inferred
+    values = np.asarray(observations, dtype="datetime64[ns]").astype("int64")
+    deltas = np.diff(values)
+    median = pd.Timedelta(int(np.median(deltas)), unit="ns")
+    return f"irregular (median {median})"
+
+
+def _format_date_range(start: pd.Timestamp, end: pd.Timestamp) -> str:
+    """Format an inclusive observation range without platform-specific directives."""
+    left = f"{start:%b} {start.day}, {start.year}"
+    right = f"{end:%b} {end.day}, {end.year}"
+    return f"{left} - {right}"
+
+
+def sync_dates(
+    axes: Iterable[Axes],
+    *,
+    mode: Literal["show", "collapse"] | None = None,
+    limits: Literal["union", "intersection"] = "union",
+) -> list[DateAxis]:
+    """
+    Synchronize date semantics across a collection of axes.
+
+    Parameters
+    ----------
+    axes : iterable of matplotlib.axes.Axes
+        Axes to adopt and synchronize.
+    mode : {"show", "collapse"}, optional
+        Coordinate mode applied to every axes. If omitted, existing modes must agree.
+    limits : {"union", "intersection"}, default "union"
+        Whether limits cover every observation or only the overlapping range.
+
+    Returns
+    -------
+    list of DateAxis
+        Handles in the same order as ``axes``.
+
+    Raises
+    ------
+    ValueError
+        If no axes are supplied, modes disagree, limits are invalid, or ranges do not
+        overlap.
+
+    Notes
+    -----
+    All handles receive the union of observed dates. This makes collapsed coordinates
+    comparable across panels instead of assigning different ordinal positions to the
+    same date.
+    """
+    if mode not in (None, "show", "collapse"):
+        raise ValueError(f"mode must be 'show' or 'collapse', got {mode!r}")
+    if limits not in ("union", "intersection"):
+        raise ValueError(f"limits must be 'union' or 'intersection', got {limits!r}")
+
+    axes_list = list(axes)
+    if not axes_list:
+        raise ValueError("axes must contain at least one matplotlib Axes")
+    handles = [dates(ax) for ax in axes_list]
+    for handle in handles:
+        handle._require_observations("sync_dates()")
+
+    modes = {handle.mode for handle in handles}
+    if mode is None and len(modes) != 1:
+        raise ValueError("axes use different modes; pass mode='show' or mode='collapse'")
+    target_mode = mode or handles[0].mode
+
+    ranges = [(handle._nums[0], handle._nums[-1]) for handle in handles]
+    if limits == "union":
+        lower = min(item[0] for item in ranges)
+        upper = max(item[1] for item in ranges)
+    else:
+        lower = max(item[0] for item in ranges)
+        upper = min(item[1] for item in ranges)
+        if lower > upper:
+            raise ValueError("axes have no overlapping observation range")
+
+    shared = np.unique(np.concatenate([handle._nums for handle in handles]))
+    lower_date = pd.Timestamp(mdates.num2date(lower)).tz_localize(None)
+    upper_date = pd.Timestamp(mdates.num2date(upper)).tz_localize(None)
+    for handle in handles:
+        handle.expand()
+        handle._nums = shared.copy()
+        handle._trusted = True
+        if target_mode == "collapse":
+            handle.collapse()
+        handle.zoom(lower_date, upper_date)
+    return handles
+
+
 def dates(
-    ax: Axes | None = None, data: Any = None, *, mode: str | None = None
+    ax: Axes | None = None,
+    data: Any = None,
+    *,
+    mode: str | None = None,
+    missing: MissingPolicy = "raise",
 ) -> DateAxis:
     """
     Return the date-axis handle for a matplotlib axes.
@@ -1045,6 +1310,8 @@ def dates(
         recoverable from its artists.
     mode : {"show", "collapse"}, optional
         ``"show"`` or ``"collapse"``. Omit to leave an existing handle alone.
+    missing : {"raise", "drop"}, default "raise"
+        Policy for missing values in explicitly supplied ``data``.
 
     Returns
     -------
@@ -1064,16 +1331,23 @@ def dates(
     """
     if mode not in (None, "show", "collapse"):
         raise ValueError(f"mode must be 'show' or 'collapse', got {mode!r}")
+    if missing not in ("raise", "drop"):
+        raise ValueError(f"missing must be 'raise' or 'drop', got {missing!r}")
     ax = ax if ax is not None else plt.gca()
     handle = getattr(ax, _ATTR, None)
 
     if handle is None:
-        return DateAxis(ax, data, mode=mode or "show")
+        return DateAxis(ax, data, mode=mode or "show", missing=missing)
 
     if data is not None:
-        handle._ingest(data)
+        was_collapsed = handle.mode == "collapse"
+        if was_collapsed:
+            handle.expand()
+        handle._ingest(data, missing=missing)
         handle._validate()
         handle._refresh()
+        if was_collapsed:
+            handle.collapse()
     if mode == "collapse":
         handle.collapse()
     elif mode == "show":

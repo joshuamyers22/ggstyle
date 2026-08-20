@@ -14,18 +14,20 @@ those arrive in v0.1b.
 """
 
 from ._cadence import Cadence
-from .dates import DateAxis, dates
+from .dates import AxisSummary, DateAxis, dates, sync_dates
 from .theme import DEFAULT_THEME, available_themes, stylesheet, theme, use_theme
 
 __version__ = "0.1a0"
 __all__ = [
     "DEFAULT_THEME",
+    "AxisSummary",
     "Cadence",
     "DateAxis",
     "__version__",
     "available_themes",
     "dates",
     "stylesheet",
+    "sync_dates",
     "theme",
     "use_theme",
 ]

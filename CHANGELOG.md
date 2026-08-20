@@ -15,6 +15,9 @@ Initial public alpha.
   documentation structure used by statsmodels.
 - Replace loosely typed annotation dictionaries with explicit internal state objects and
   broaden automated clean-code checks.
+- Add structured ``AxisSummary`` metadata and captions generated from the same source.
+- Add explicit ``missing="raise"`` and ``missing="drop"`` date policies.
+- Add ``sync_dates`` for comparable date coordinates and limits across multiple panels.
 
 The alpha designation is intentional: collapsed mode currently remaps line artists only,
 and the API may change based on early usage.

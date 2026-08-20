@@ -12,8 +12,13 @@ Date axes
 .. autoclass:: ggstyle.DateAxis
    :members:
 
+.. autoclass:: ggstyle.AxisSummary
+   :members:
+
 .. autoclass:: ggstyle.Cadence
    :members:
+
+.. autofunction:: ggstyle.sync_dates
 
 Themes
 ------

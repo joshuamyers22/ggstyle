@@ -94,6 +94,9 @@ def to_timestamp(value: Any, side: str = "start") -> pd.Timestamp:
     if side not in ("start", "end"):
         raise ValueError(f"side must be 'start' or 'end', got {side!r}")
 
+    if value is None or value is pd.NaT:
+        return pd.Timestamp("NaT")
+
     if isinstance(value, pd.Timestamp):
         return value
     if isinstance(value, _dt.datetime):

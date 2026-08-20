@@ -6,8 +6,10 @@ from numpydoc.validate import validate
 
 PUBLIC_OBJECTS = (
     "ggstyle._cadence.Cadence",
+    "ggstyle.dates.AxisSummary",
     "ggstyle.dates.DateAxis",
     "ggstyle.dates.dates",
+    "ggstyle.dates.sync_dates",
     "ggstyle.theme.available_themes",
     "ggstyle.theme.stylesheet",
     "ggstyle.theme.theme",
@@ -16,6 +18,7 @@ PUBLIC_OBJECTS = (
 
 DATE_AXIS_METHODS = (
     "collapse",
+    "caption",
     "date_at",
     "expand",
     "fmt",
@@ -25,6 +28,7 @@ DATE_AXIS_METHODS = (
     "rotate",
     "span",
     "spans",
+    "summary",
     "ticks",
     "tz",
     "vline",

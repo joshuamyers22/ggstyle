@@ -66,6 +66,131 @@ class TestAdoption:
         assert gs.dates(empty).mode == "show"
         plt.close(fig)
 
+    def test_missing_explicit_dates_raise_by_default(self):
+        fig, empty = plt.subplots()
+        values = pd.DatetimeIndex(["2024-01-01", pd.NaT])
+        with pytest.raises(ValueError, match="missing='drop'"):
+            gs.dates(empty, data=values)
+        plt.close(fig)
+
+    def test_missing_explicit_dates_can_be_dropped(self):
+        fig, empty = plt.subplots()
+        values = pd.DatetimeIndex(["2024-01-01", pd.NaT, "2024-01-02"])
+        handle = gs.dates(empty, data=values, missing="drop")
+        assert list(handle.observations) == list(values.dropna())
+        assert handle.summary().missing_values == 1
+        plt.close(fig)
+
+    def test_missing_plain_sequence_value_is_not_parsed_as_now(self):
+        fig, empty = plt.subplots()
+        handle = gs.dates(
+            empty, data=[pd.Timestamp("2024-01-01"), None], missing="drop"
+        )
+        assert list(handle.observations) == [pd.Timestamp("2024-01-01")]
+        assert handle.summary().missing_values == 1
+        plt.close(fig)
+
+    def test_incremental_data_extends_observation_registry(self):
+        fig, empty = plt.subplots()
+        handle = gs.dates(empty, data=pd.date_range("2024-01-01", periods=2))
+        gs.dates(empty, data=pd.date_range("2024-01-03", periods=2))
+        assert list(handle.observations) == list(pd.date_range("2024-01-01", periods=4))
+        plt.close(fig)
+
+    def test_incremental_data_preserves_collapsed_mode(self):
+        fig, empty = plt.subplots()
+        handle = gs.dates(empty, data=pd.date_range("2024-01-01", periods=2)).collapse()
+        gs.dates(empty, data=[pd.Timestamp("2024-01-03")])
+        assert handle.mode == "collapse"
+        assert len(handle.observations) == 3
+        plt.close(fig)
+
+    def test_invalid_missing_policy_rejected(self, ax):
+        with pytest.raises(ValueError, match="missing must be"):
+            gs.dates(ax, missing="ignore")
+
+
+class TestSummary:
+    def test_summary_is_structured_and_resolved(self, ax):
+        handle = gs.dates(ax).ticks("monthly").tz("America/New_York")
+        summary = handle.summary()
+        assert isinstance(summary, gs.AxisSummary)
+        assert summary.mode == "show"
+        assert summary.observations == len(handle.observations)
+        assert summary.start == pd.Timestamp("2020-01-01")
+        assert summary.end == pd.Timestamp("2021-12-31")
+        assert summary.inferred_frequency == "B"
+        assert summary.major_cadence == "month[start]"
+        assert summary.timezone == "America/New_York"
+
+    def test_explicit_ticks_are_reported(self, ax):
+        summary = gs.dates(ax).ticks(at=["2020-01-01"]).summary()
+        assert summary.major_cadence == "explicit"
+        assert summary.minor_cadence is None
+
+    def test_caption_is_extractable(self, ax):
+        handle = gs.dates(ax).collapse()
+        text = handle.caption()
+        assert f"{len(handle.observations)} observations" in text
+        assert "unobserved dates collapsed" in text
+        assert len(ax.texts) == 0
+
+    def test_added_caption_is_replaced(self, ax):
+        handle = gs.dates(ax)
+        first = handle.caption(add=True)
+        second = handle.collapse().caption(add=True)
+        assert first != second
+        assert len(ax.texts) == 1
+        assert ax.texts[0].get_text() == second
+
+
+class TestSynchronizedAxes:
+    def _axes(self, left, right):
+        fig, axes = plt.subplots(2, 1)
+        axes[0].plot(left, np.arange(len(left)))
+        axes[1].plot(right, np.arange(len(right)))
+        return fig, axes
+
+    def test_union_makes_collapsed_positions_comparable(self):
+        left = pd.date_range("2024-01-01", "2024-01-03")
+        right = pd.date_range("2024-01-02", "2024-01-04")
+        fig, axes = self._axes(left, right)
+        handles = gs.sync_dates(axes, mode="collapse")
+        assert all(handle.summary().observations == 4 for handle in handles)
+        assert handles[0].loc("2024-01-02") == handles[1].loc("2024-01-02")
+        assert np.allclose(axes[0].get_xlim(), axes[1].get_xlim())
+        plt.close(fig)
+
+    def test_intersection_uses_overlapping_limits(self):
+        left = pd.date_range("2024-01-01", "2024-01-03")
+        right = pd.date_range("2024-01-02", "2024-01-04")
+        fig, axes = self._axes(left, right)
+        handles = gs.sync_dates(axes, limits="intersection")
+        lo, hi = handles[0]._visible_range()
+        assert lo.normalize() == pd.Timestamp("2024-01-02")
+        assert hi.normalize() == pd.Timestamp("2024-01-03")
+        plt.close(fig)
+
+    def test_mixed_modes_require_explicit_choice(self):
+        left = pd.date_range("2024-01-01", "2024-01-03")
+        fig, axes = self._axes(left, left)
+        gs.dates(axes[0]).collapse()
+        with pytest.raises(ValueError, match="different modes"):
+            gs.sync_dates(axes)
+        plt.close(fig)
+
+    def test_intersection_requires_overlap(self):
+        left = pd.date_range("2024-01-01", "2024-01-03")
+        right = pd.date_range("2024-02-01", "2024-02-03")
+        fig, axes = self._axes(left, right)
+        with pytest.raises(ValueError, match="no overlapping"):
+            gs.sync_dates(axes, limits="intersection")
+        plt.close(fig)
+
+    def test_empty_axes_collection_rejected(self):
+        with pytest.raises(ValueError, match="at least one"):
+            gs.sync_dates([])
+
 
 class TestTickPlacement:
     @pytest.mark.parametrize("value", [0, -1, 1.5, True])

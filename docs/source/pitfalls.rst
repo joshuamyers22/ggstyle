@@ -38,3 +38,17 @@ Input interpretation
 Whole data frames, scalar dates, and string-typed pandas or polars columns are rejected.
 Select one column and convert it to a datetime dtype explicitly. This prevents accidental
 interpretation of identifiers or ambiguous date strings.
+
+Missing explicit dates
+----------------------
+
+Explicit data containing missing dates raises by default. ``missing="drop"`` excludes
+those values and records their count in :meth:`ggstyle.DateAxis.summary`. Missing x-values
+already present in a line are treated as intentional line breaks and are not counted.
+
+Synchronized collapsed panels
+-----------------------------
+
+Calling :meth:`ggstyle.DateAxis.collapse` independently on several panels can assign
+different ordinal positions to the same date. Use :func:`ggstyle.sync_dates` when panels
+are intended for comparison.

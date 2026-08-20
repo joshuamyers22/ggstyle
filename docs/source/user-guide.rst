@@ -46,6 +46,52 @@ Use :meth:`ggstyle.DateAxis.loc`, :meth:`ggstyle.DateAxis.vline`, and
 especially important on collapsed axes, where a raw matplotlib date number is not an
 axis position.
 
+Axis summaries and captions
+---------------------------
+
+:meth:`ggstyle.DateAxis.summary` returns an immutable :class:`ggstyle.AxisSummary`
+instead of requiring callers to inspect locators or artists. It records the observation
+range, inferred frequency, resolved cadences, display timezone, coordinate mode, and
+number of explicitly dropped dates.
+
+Use :meth:`ggstyle.DateAxis.caption` to format the same semantics for a report:
+
+.. code-block:: python
+
+   handle = gs.dates(ax)
+   metadata = handle.summary()
+   caption = handle.caption()          # return text only
+   handle.caption(add=True)            # also draw below the axes
+
+Missing dates
+-------------
+
+Missing values in explicitly supplied date data raise by default. Dropping them must be
+requested and remains visible in the summary:
+
+.. code-block:: python
+
+   handle = gs.dates(ax, data=dates, missing="drop")
+   assert handle.summary().missing_values == 2
+
+Missing positions already embedded in plotted line artists are preserved as line breaks;
+they are not treated as discarded source observations.
+
+Synchronized panels
+-------------------
+
+:func:`ggstyle.sync_dates` adopts several axes, gives them a shared observation registry,
+and applies common date limits. This matters in collapsed mode: without a shared registry,
+the same date can have a different ordinal position in each panel.
+
+.. code-block:: python
+
+   handles = gs.sync_dates(axes, mode="collapse", limits="union")
+
+Use ``limits="intersection"`` to display only the overlapping observation range. If the
+panels already use different modes, pass an explicit mode rather than relying on an
+arbitrary panel to win.
+
 Themes
 ------
 
