@@ -6,5 +6,4 @@ callables as trusted Python code.
 
 Please report a suspected vulnerability privately to `joshua.myers22@gmail.com` rather
 than opening a public issue. Include the affected version, a minimal reproducer, and the
-impact. Supported versions will be listed here after the first stable release; during the
-alpha, fixes are made on the latest release only.
+impact. Security fixes are made on the latest public release only.

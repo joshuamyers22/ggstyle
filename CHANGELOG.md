@@ -2,9 +2,9 @@
 
 This project follows [Semantic Versioning](https://semver.org/).
 
-## 0.1a0 - 2026-08-19
+## 0.1.0 - 2026-08-19
 
-Initial public alpha.
+Initial public release.
 
 - Add a date-axis handle that adopts existing matplotlib axes.
 - Add independent tick cadence, label formatting, range, and grid controls.
@@ -19,5 +19,5 @@ Initial public alpha.
 - Add explicit ``missing="raise"`` and ``missing="drop"`` date policies.
 - Add ``sync_dates`` for comparable date coordinates and limits across multiple panels.
 
-The alpha designation is intentional: collapsed mode currently remaps line artists only,
-and the API may change based on early usage.
+Collapsed mode currently remaps line artists only. Collection remapping remains planned
+for a later release.

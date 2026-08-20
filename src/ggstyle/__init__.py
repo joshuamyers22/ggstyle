@@ -1,7 +1,7 @@
 """ggstyle -- a ggplot2-flavoured plotting layer for Python.
 
-v0.1a is the date axis plus themes. No palettes module and no ``line()`` yet;
-those arrive in v0.1b.
+v0.1 is the date axis plus themes. No palettes module and no ``line()`` yet;
+those remain future additions.
 
     import matplotlib.pyplot as plt
     import ggstyle as gs
@@ -13,11 +13,13 @@ those arrive in v0.1b.
     gs.dates(ax).ticks("quarterly").fmt("month-year").zoom("2020", "2022")
 """
 
+from importlib.metadata import version
+
 from ._cadence import Cadence
 from .dates import AxisSummary, DateAxis, dates, sync_dates
 from .theme import DEFAULT_THEME, available_themes, stylesheet, theme, use_theme
 
-__version__ = "0.1a0"
+__version__ = version("ggstyle")
 __all__ = [
     "DEFAULT_THEME",
     "AxisSummary",

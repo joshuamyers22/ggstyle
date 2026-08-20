@@ -2,7 +2,7 @@
 
 > Name settled: `ggstyle`.
 
-> Status (2026-08-19): the public `0.1a0` alpha contains the standalone date axis and
+> Status (2026-08-19): the public `0.1.0` release contains the standalone date axis and
 > themes, structured axis summaries, explicit missing-date handling, generated captions,
 > and multi-panel date synchronization. The `line()`, palette, formatter, label, and save
 > APIs below remain roadmap items for `0.1b` or later.
@@ -351,7 +351,7 @@ figure without raising. Hypothesis for the input generation.
 
 ## 10. Milestones
 
-**v0.1a — The date axis, plus themes** *(built)*
+**v0.1 — The date axis, plus themes** *(built)*
 `gs.dates(ax)` with the full §6 surface: adoption of foreign Axes, ticks, fmt, zoom, gaps,
 `.loc`/`.vline`/`.span`/`.grid`, auto-cadence. Frame adapter for pandas and polars. Two
 stylesheets with `use_theme`/`theme`. Structured `AxisSummary`, generated semantic
@@ -359,7 +359,7 @@ captions, explicit missing-date policy, and `sync_dates()` for comparable panels
 *Done when:* it improves a plot made by raw `ax.plot()` or pandas `.plot()` with a single
 call, and the §6.7 cadence table passes end to end. ✓
 
-**v0.1b — Line plots**
+**Post-v0.1 — Line plots**
 `line()`, tick value formatters (dollar/percent/comma/SI), `save()`, palettes module,
 README gallery.
 *Done when:* a daily price series and an intraday series both render publication-ready with
@@ -557,7 +557,7 @@ machine mattering:
    close enough to `minimal` that it wasn't earning its slot. Both shipped themes share one
    type scale and colour cycle, so switching changes the panel surface and nothing else.
 4. **Collapsed positions interpolate rather than snap.** The piecewise-linear mapping turned
-   out to be a few lines of `np.interp`, so it landed in v0.1a instead of v0.2. Snapping
+   out to be a few lines of `np.interp`, so it landed in v0.1 instead of v0.2. Snapping
    survives as `loc(date, snap=True)`; `strict=True` raises.
 5. **Spine removal is an rcParam.** `axes.spines.left: False` exists, so it belongs in the
    stylesheet, not in Python. The original §7 split was wrong about this.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ggstyle"
-version = "0.1a0"
+version = "0.1.0"
 description = "A date axis for matplotlib that is easy to use and manipulate"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,7 @@ license = "MIT"
 authors = [{ name = "Joshua Myers", email = "joshua.myers22@gmail.com" }]
 keywords = ["matplotlib", "visualization", "dates", "ggplot2"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
