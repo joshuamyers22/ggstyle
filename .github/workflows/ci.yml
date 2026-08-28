@@ -20,10 +20,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: python -m pip install -e ".[dev]"
-      - run: python -m pytest -q --cov=ggstyle --cov-report=term-missing
-      - run: python -m ruff check .
-      - run: python -m mypy src
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --all-extras
+      - run: uv run pytest -q --cov=ggstyle --cov-report=term-missing
+      - run: uv run ruff check .
+      - run: uv run mypy src
 
   package:
     runs-on: ubuntu-latest
@@ -33,9 +34,10 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - run: python -m pip install build twine
-      - run: python -m build
-      - run: python -m twine check dist/*
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --all-extras
+      - run: uv build
+      - run: uv run twine check dist/*
 
   docs:
     runs-on: ubuntu-latest
@@ -45,7 +47,8 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-      - run: python -m pip install -e ".[docs]"
-      - run: python tools/validate_docstrings.py
-      - run: python -m sphinx -W --keep-going -b html docs/source docs/build/html
-      - run: MPLBACKEND=Agg python -m sphinx -W -b doctest docs/source docs/build/doctest
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --all-extras
+      - run: uv run python tools/validate_docstrings.py
+      - run: uv run sphinx-build -W --keep-going -b html docs/source docs/build/html
+      - run: MPLBACKEND=Agg uv run sphinx-build -W -b doctest docs/source docs/build/doctest
