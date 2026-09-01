@@ -29,7 +29,7 @@ That is what keeps annotations honest when the mode changes.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 import matplotlib.dates as mdates
@@ -39,7 +39,7 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.ticker import FixedFormatter, FixedLocator
 
-from . import _cadence, _coordinates, _formats, _tick_positions
+from . import _annotations, _cadence, _coordinates, _formats, _tick_positions
 from ._date_summary import format_date_range as _format_date_range
 from ._date_summary import infer_frequency as _infer_frequency
 from ._date_summary import minor_below as _minor_below
@@ -97,17 +97,6 @@ class AxisSummary:
     minor_cadence: str | None
     timezone: str | None
     missing_values: int
-
-
-@dataclass
-class _Annotation:
-    """Store a replayable date-space annotation."""
-
-    kind: Literal["vline", "span"]
-    dates: tuple[Any, ...]
-    label: str | None
-    kwargs: dict[str, Any]
-    artists: list[Any] = field(default_factory=list)
 
 
 class DateAxis:
@@ -184,7 +173,7 @@ class DateAxis:
         self._grid_artists: list[Any] = []
         self._caption_artist: Any | None = None
 
-        self._annotations: list[_Annotation] = []
+        self._annotations: list[_annotations.Annotation] = []
         self._original_x: dict[int, np.ndarray] = {}
         self._refreshing = False
         self._trusted = False
@@ -799,7 +788,7 @@ class DateAxis:
             if id(line) in self._original_x:
                 line.set_xdata(self._nums_to_pos(self._original_x[id(line)]))
 
-        self._replay_annotations()
+        _annotations.replay(self.ax, self._annotations, self.loc)
         return self.zoom(lo, hi)
 
     def expand(self):
@@ -821,7 +810,7 @@ class DateAxis:
             if original is not None:
                 line.set_xdata(original)
 
-        self._replay_annotations()
+        _annotations.replay(self.ax, self._annotations, self.loc)
         return self.zoom(lo, hi)
 
     def _remember_original_x(self) -> None:
@@ -859,9 +848,9 @@ class DateAxis:
             This handle, for method chaining.
         """
         self._annotations.append(
-            _Annotation("vline", (date,), label, kwargs)
+            _annotations.Annotation("vline", (date,), label, kwargs)
         )
-        self._draw_annotation(self._annotations[-1])
+        _annotations.draw(self.ax, self._annotations[-1], self.loc)
         return self
 
     def span(self, start: Any, end: Any, label: str | None = None, **kwargs):
@@ -886,9 +875,9 @@ class DateAxis:
             This handle, for method chaining.
         """
         self._annotations.append(
-            _Annotation("span", (start, end), label, kwargs)
+            _annotations.Annotation("span", (start, end), label, kwargs)
         )
-        self._draw_annotation(self._annotations[-1])
+        _annotations.draw(self.ax, self._annotations[-1], self.loc)
         return self
 
     def spans(
@@ -924,47 +913,6 @@ class DateAxis:
             text = str(row[label]) if label is not None else None
             self.span(row[start], row[end], label=text, **kwargs)
         return self
-
-    def _draw_annotation(self, entry: _Annotation) -> None:
-        kwargs = dict(entry.kwargs)
-
-        if entry.kind == "vline":
-            kwargs.setdefault("color", "0.35")
-            kwargs.setdefault("linewidth", 1.0)
-            kwargs.setdefault("linestyle", "--")
-            position = self.loc(entry.dates[0])
-            entry.artists.append(self.ax.axvline(position, **kwargs))
-            text_x = position
-        else:
-            kwargs.setdefault("color", "0.85")
-            kwargs.setdefault("alpha", 0.5)
-            kwargs.setdefault("linewidth", 0)
-            left = self.loc(entry.dates[0])
-            right = self.loc(entry.dates[1])
-            entry.artists.append(self.ax.axvspan(left, right, **kwargs))
-            text_x = (left + right) / 2
-
-        if entry.label:
-            entry.artists.append(
-                self.ax.text(
-                    text_x,
-                    0.98,
-                    entry.label,
-                    transform=self.ax.get_xaxis_transform(),
-                    ha="center",
-                    va="top",
-                    fontsize="small",
-                    color="0.35",
-                    clip_on=True,
-                )
-            )
-
-    def _replay_annotations(self) -> None:
-        for entry in self._annotations:
-            for artist in entry.artists:
-                artist.remove()
-            entry.artists.clear()
-            self._draw_annotation(entry)
 
     # ------------------------------------------------------------------
     # gridlines, at their own cadence
