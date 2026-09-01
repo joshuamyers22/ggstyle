@@ -45,6 +45,7 @@ from . import (
     _cadence,
     _coordinates,
     _formats,
+    _grid,
     _tick_positions,
 )
 from ._axis_data import MissingPolicy
@@ -906,23 +907,15 @@ class DateAxis:
         return self._refresh()
 
     def _draw_grid(self, lo: pd.Timestamp, hi: pd.Timestamp) -> None:
-        for artist in self._grid_artists:
-            artist.remove()
-        self._grid_artists = []
-        if self._grid_spec is None:
-            return
-
-        cadence = _cadence.resolve(self._grid_spec)
-        _, positions = self._ticks_for(cadence, lo, hi)
-        style = {
-            "color": plt.rcParams.get("grid.color", "0.85"),
-            "linewidth": plt.rcParams.get("grid.linewidth", 0.8),
-            "linestyle": plt.rcParams.get("grid.linestyle", "-"),
-            "zorder": 0,
-        }
-        style.update(self._grid_kwargs)
-        for position in positions:
-            self._grid_artists.append(self.ax.axvline(float(position), **style))
+        self._grid_artists = _grid.render(
+            self.ax,
+            self._grid_artists,
+            self._grid_spec,
+            self._grid_kwargs,
+            lo,
+            hi,
+            self._ticks_for,
+        )
 
     # ------------------------------------------------------------------
     # refresh
