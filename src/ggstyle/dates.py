@@ -39,7 +39,7 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.ticker import FixedFormatter, FixedLocator
 
-from . import _cadence, _formats
+from . import _cadence, _coordinates, _formats
 from ._date_summary import format_date_range as _format_date_range
 from ._date_summary import infer_frequency as _infer_frequency
 from ._date_summary import minor_below as _minor_below
@@ -168,7 +168,7 @@ class DateAxis:
         if mode not in ("show", "collapse"):
             raise ValueError(f"mode must be 'show' or 'collapse', got {mode!r}")
         self.ax = ax
-        self._mode = "show"
+        self._mode: Literal["show", "collapse"] = "show"
         self._nums = np.empty(0, dtype=float)
 
         self._major_spec: Any = None  # None -> auto
@@ -387,46 +387,15 @@ class DateAxis:
 
     def _nums_to_pos(self, nums: np.ndarray) -> np.ndarray:
         """Map matplotlib date numbers to axis positions for the current mode."""
-        nums = np.atleast_1d(np.asarray(nums, dtype=float))
-        if self._mode == "show":
-            return nums
-
-        self._require_observations("collapsed positioning")
-        knots = self._nums
-        index = np.arange(knots.size, dtype=float)
-        if knots.size == 1:
-            step = 1.0
-            return (nums - knots[0]) / step
-
-        pos = np.interp(nums, knots, index)
-        # np.interp clamps; extrapolate outside the observed range using median
-        # spacing so that .pad() and out-of-range annotations still behave.
-        step = float(np.median(np.diff(knots))) or 1.0
-        below = nums < knots[0]
-        above = nums > knots[-1]
-        pos[below] = (nums[below] - knots[0]) / step
-        pos[above] = index[-1] + (nums[above] - knots[-1]) / step
-        return pos
+        if self._mode == "collapse":
+            self._require_observations("collapsed positioning")
+        return _coordinates.dates_to_positions(nums, self._nums, self._mode)
 
     def _pos_to_nums(self, pos: np.ndarray) -> np.ndarray:
         """Inverse of :meth:`_nums_to_pos`."""
-        pos = np.atleast_1d(np.asarray(pos, dtype=float))
-        if self._mode == "show":
-            return pos
-
-        self._require_observations("collapsed positioning")
-        knots = self._nums
-        index = np.arange(knots.size, dtype=float)
-        if knots.size == 1:
-            return np.full_like(pos, knots[0])
-
-        nums = np.interp(pos, index, knots)
-        step = float(np.median(np.diff(knots))) or 1.0
-        below = pos < 0
-        above = pos > index[-1]
-        nums[below] = knots[0] + pos[below] * step
-        nums[above] = knots[-1] + (pos[above] - index[-1]) * step
-        return nums
+        if self._mode == "collapse":
+            self._require_observations("collapsed positioning")
+        return _coordinates.positions_to_dates(pos, self._nums, self._mode)
 
     def loc(self, date: Any, *, snap: bool = False, strict: bool = False) -> float:
         """
