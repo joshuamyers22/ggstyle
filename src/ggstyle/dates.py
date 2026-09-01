@@ -39,7 +39,15 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.ticker import FixedFormatter, FixedLocator
 
-from . import _annotations, _cadence, _coordinates, _formats, _tick_positions
+from . import (
+    _annotations,
+    _axis_data,
+    _cadence,
+    _coordinates,
+    _formats,
+    _tick_positions,
+)
+from ._axis_data import MissingPolicy
 from ._date_summary import format_date_range as _format_date_range
 from ._date_summary import infer_frequency as _infer_frequency
 from ._date_summary import minor_below as _minor_below
@@ -49,12 +57,6 @@ from ._parse import to_offset, to_timestamp
 __all__ = ["AxisSummary", "DateAxis", "dates", "sync_dates"]
 
 _ATTR = "_ggstyle_date_axis"
-
-#: Plausible range for a matplotlib date number, used to catch non-date axes.
-#: Roughly years 1400 to 2500 either side of the 1970 epoch.
-_NUM_MIN, _NUM_MAX = -220_000, 200_000
-MissingPolicy = Literal["raise", "drop"]
-
 
 @dataclass(frozen=True)
 class AxisSummary:
@@ -196,65 +198,24 @@ class DateAxis:
 
     def _ingest(self, data: Any, *, missing: MissingPolicy = "raise") -> None:
         """Collect observed dates from explicit input and from existing artists."""
-        if missing not in ("raise", "drop"):
-            raise ValueError(f"missing must be 'raise' or 'drop', got {missing!r}")
-        nums: list[np.ndarray] = [self._nums.copy()] if self._nums.size else []
-
-        if data is not None:
-            index = _as_datetime_index(data)
-            missing_count = int(np.count_nonzero(index.isna()))
-            if missing_count and missing == "raise":
-                raise ValueError(
-                    f"date data contains {missing_count} missing value(s); "
-                    "pass missing='drop' to exclude them explicitly"
-                )
-            if missing_count:
-                self._missing_values += missing_count
-                index = index[index.notna()]
-            nums.append(mdates.date2num(index))
-            self._trusted = True
-
-        for line in self.ax.lines:
-            xdata = np.asarray(line.get_xdata(orig=False), dtype=float)
-            if xdata.size:
-                nums.append(xdata)
-
-        if nums:
-            stacked = np.concatenate(nums)
-            stacked = stacked[np.isfinite(stacked)]
-            self._nums = np.unique(stacked)
-
-    def _has_date_converter(self) -> bool:
-        """Whether matplotlib is treating this axis as dates."""
-        axis = self.ax.xaxis
-        getter = getattr(axis, "get_converter", None)
-        converter = getter() if getter is not None else getattr(axis, "converter", None)
-        if converter is None:
-            return False
-        if isinstance(converter, (mdates.DateConverter, mdates.ConciseDateConverter)):
-            return True
-        # matplotlib >= 3.9 installs a switchable converter by default.
-        return "Date" in type(converter).__name__
+        collected = _axis_data.collect(
+            self.ax,
+            data,
+            existing=_axis_data.AxisData(
+                self._nums, self._missing_values, self._trusted
+            ),
+            missing=missing,
+        )
+        self._nums = collected.numbers
+        self._missing_values = collected.missing_values
+        self._trusted = collected.trusted
 
     def _validate(self) -> None:
         """Fail loudly if this does not look like a date axis."""
-        if self._nums.size == 0:
-            return
-
-        if not self._trusted and not self._has_date_converter():
-            raise TypeError(
-                "x axis does not look like dates: matplotlib has no date converter "
-                "installed on it. Plot datetimes, or pass the dates explicitly via "
-                "dates(ax, data=...)."
-            )
-
-        lo, hi = float(self._nums[0]), float(self._nums[-1])
-        if lo < _NUM_MIN or hi > _NUM_MAX:
-            raise TypeError(
-                "x axis does not look like dates: values span "
-                f"{lo:.6g} to {hi:.6g}, which is outside the plausible range for "
-                "matplotlib date numbers."
-            )
+        _axis_data.validate(
+            self.ax,
+            _axis_data.AxisData(self._nums, self._missing_values, self._trusted),
+        )
 
     # ------------------------------------------------------------------
     # coordinates
