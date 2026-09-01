@@ -39,7 +39,7 @@ import pandas as pd
 from matplotlib.axes import Axes
 from matplotlib.ticker import FixedFormatter, FixedLocator
 
-from . import _cadence, _coordinates, _formats
+from . import _cadence, _coordinates, _formats, _tick_positions
 from ._date_summary import format_date_range as _format_date_range
 from ._date_summary import infer_frequency as _infer_frequency
 from ._date_summary import minor_below as _minor_below
@@ -53,8 +53,6 @@ _ATTR = "_ggstyle_date_axis"
 #: Plausible range for a matplotlib date number, used to catch non-date axes.
 #: Roughly years 1400 to 2500 either side of the 1970 epoch.
 _NUM_MIN, _NUM_MAX = -220_000, 200_000
-_MAX_TICKS = 10_000
-
 MissingPolicy = Literal["raise", "drop"]
 
 
@@ -571,60 +569,16 @@ class DateAxis:
     def _ticks_for(
         self, cadence: _cadence.Cadence, lo: pd.Timestamp, hi: pd.Timestamp
     ) -> tuple[pd.DatetimeIndex, np.ndarray]:
-        """Return (label timestamps, axis positions) for ``cadence``.
-
-        In collapsed mode a candidate period boundary is positioned at the first
-        observation inside that period (or the last, for end-anchored cadences),
-        so monthly ticks land on real trading days while still being labelled as
-        the month they open.
-        """
-        estimated = int(max((hi - lo).total_seconds(), 0) / cadence.approx_seconds) + 3
-        if estimated > _MAX_TICKS:
-            raise ValueError(
-                f"tick cadence would create about {estimated:,} ticks; choose a "
-                "coarser cadence or narrow the visible range"
-            )
-        candidates = _cadence.periods_between(cadence, lo, hi)
-        if len(candidates) > _MAX_TICKS:
-            raise ValueError(
-                f"tick cadence would create {len(candidates):,} ticks; choose a "
-                "coarser cadence or narrow the visible range"
-            )
-        if len(candidates) == 0:
-            return pd.DatetimeIndex([]), np.empty(0)
-
-        cand_nums = mdates.date2num(candidates)
-
-        if self._mode == "show":
-            positions = cand_nums
-            labels = candidates
-        else:
+        """Return label timestamps and axis positions for ``cadence``."""
+        if self._mode == "collapse":
             self._require_observations("tick placement")
-            knots = self._nums
-            if cadence.anchor == "end":
-                idx = np.searchsorted(knots, cand_nums, side="right") - 1
-                # The matched observation must fall after the previous candidate,
-                # i.e. inside this candidate's own period. Otherwise a period with
-                # no observations would borrow its neighbour's and be mislabelled.
-                previous = np.concatenate(([-np.inf], cand_nums[:-1]))
-                inside_period = knots[np.clip(idx, 0, knots.size - 1)] > previous
-            else:
-                idx = np.searchsorted(knots, cand_nums, side="left")
-                following = np.concatenate((cand_nums[1:], [np.inf]))
-                inside_period = knots[np.clip(idx, 0, knots.size - 1)] < following
-
-            valid = (idx >= 0) & (idx < knots.size) & inside_period
-            idx, labels = idx[valid], candidates[valid]
-            if idx.size == 0:
-                return pd.DatetimeIndex([]), np.empty(0)
-            positions = idx.astype(float)
-
-        lo_pos = float(self._nums_to_pos(np.array([mdates.date2num(lo)]))[0])
-        hi_pos = float(self._nums_to_pos(np.array([mdates.date2num(hi)]))[0])
-        inside = (positions >= min(lo_pos, hi_pos) - 1e-9) & (
-            positions <= max(lo_pos, hi_pos) + 1e-9
+        return _tick_positions.positions_for_cadence(
+            cadence,
+            lo,
+            hi,
+            mode=self._mode,
+            knots=self._nums,
         )
-        return pd.DatetimeIndex(labels)[inside], np.asarray(positions)[inside]
 
     # ------------------------------------------------------------------
     # tick labels
