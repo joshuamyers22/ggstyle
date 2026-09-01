@@ -29,7 +29,6 @@ That is what keeps annotations honest when the mode changes.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 import matplotlib.dates as mdates
@@ -49,6 +48,7 @@ from . import (
     _tick_positions,
 )
 from ._axis_data import MissingPolicy
+from ._axis_summary import AxisSummary as AxisSummary
 from ._date_summary import format_date_range as _format_date_range
 from ._date_summary import infer_frequency as _infer_frequency
 from ._date_summary import minor_below as _minor_below
@@ -58,48 +58,6 @@ from ._parse import to_offset, to_timestamp
 __all__ = ["AxisSummary", "DateAxis", "dates", "sync_dates"]
 
 _ATTR = "_ggstyle_date_axis"
-
-@dataclass(frozen=True)
-class AxisSummary:
-    """
-    Describe the data and configuration behind a date axis.
-
-    Parameters
-    ----------
-    mode : {"show", "collapse"}
-        Active coordinate mode.
-    observations : int
-        Number of unique, non-missing observed dates.
-    start : pandas.Timestamp or None
-        First observed date.
-    end : pandas.Timestamp or None
-        Final observed date.
-    inferred_frequency : str or None
-        Pandas frequency alias, or a median-spacing description for irregular data.
-    major_cadence : str
-        Resolved major tick cadence or ``"explicit"``.
-    minor_cadence : str or None
-        Resolved minor tick cadence.
-    timezone : str or None
-        Label display timezone.
-    missing_values : int
-        Number of explicitly supplied missing dates that were dropped.
-
-    Notes
-    -----
-    Summaries contain plain values and can be logged, tested, or serialized without
-    inspecting matplotlib artists.
-    """
-
-    mode: Literal["show", "collapse"]
-    observations: int
-    start: pd.Timestamp | None
-    end: pd.Timestamp | None
-    inferred_frequency: str | None
-    major_cadence: str
-    minor_cadence: str | None
-    timezone: str | None
-    missing_values: int
 
 
 class DateAxis:
