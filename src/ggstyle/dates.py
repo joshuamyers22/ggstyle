@@ -54,6 +54,7 @@ from ._date_summary import infer_frequency as _infer_frequency
 from ._date_summary import minor_below as _minor_below
 from ._frames import to_datetime_index as _as_datetime_index
 from ._parse import to_offset, to_timestamp
+from ._timezones import apply_display_timezone as _apply_display_timezone
 
 __all__ = ["AxisSummary", "DateAxis", "dates", "sync_dates"]
 
@@ -567,10 +568,7 @@ class DateAxis:
         return self._refresh()
 
     def _apply_tz(self, index: pd.DatetimeIndex) -> pd.DatetimeIndex:
-        if self._tz is None:
-            return index
-        aware = index.tz_localize("UTC") if index.tz is None else index
-        return aware.tz_convert(self._tz)
+        return _apply_display_timezone(index, self._tz)
 
     # ------------------------------------------------------------------
     # range
