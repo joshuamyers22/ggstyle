@@ -32,3 +32,9 @@ def test_timezone_policy_does_not_import_matplotlib() -> None:
     source = Path("src/ggstyle/_timezones.py").read_text()
     assert "import matplotlib" not in source
     assert "from matplotlib" not in source
+
+
+def test_mode_line_adapter_does_not_depend_on_date_axis() -> None:
+    source = Path("src/ggstyle/_mode_lines.py").read_text()
+    assert "from .dates" not in source
+    assert "import ggstyle.dates" not in source

@@ -45,6 +45,7 @@ from . import (
     _coordinates,
     _formats,
     _grid,
+    _mode_lines,
     _tick_positions,
 )
 from ._axis_data import MissingPolicy
@@ -678,12 +679,14 @@ class DateAxis:
         self._require_observations("collapse()")
 
         lo, hi = self._visible_range()
-        self._remember_original_x()
+        _mode_lines.remember_calendar_positions(
+            self.ax, self._original_x, self._annotations
+        )
         self._mode = "collapse"
 
-        for line in self.ax.lines:
-            if id(line) in self._original_x:
-                line.set_xdata(self._nums_to_pos(self._original_x[id(line)]))
+        _mode_lines.use_collapsed_positions(
+            self.ax, self._original_x, self._nums_to_pos
+        )
 
         _annotations.replay(self.ax, self._annotations, self.loc)
         return self.zoom(lo, hi)
@@ -702,24 +705,10 @@ class DateAxis:
         lo, hi = self._visible_range()
         self._mode = "show"
 
-        for line in self.ax.lines:
-            original = self._original_x.get(id(line))
-            if original is not None:
-                line.set_xdata(original)
+        _mode_lines.restore_calendar_positions(self.ax, self._original_x)
 
         _annotations.replay(self.ax, self._annotations, self.loc)
         return self.zoom(lo, hi)
-
-    def _remember_original_x(self) -> None:
-        annotation_ids = {
-            id(artist) for entry in self._annotations for artist in entry.artists
-        }
-        for line in self.ax.lines:
-            if id(line) in annotation_ids or id(line) in self._original_x:
-                continue
-            self._original_x[id(line)] = np.asarray(
-                line.get_xdata(orig=False), dtype=float
-            )
 
     # ------------------------------------------------------------------
     # annotation in date space
