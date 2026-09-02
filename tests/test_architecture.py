@@ -47,6 +47,13 @@ def test_tick_rendering_adapter_does_not_depend_on_date_axis_policy() -> None:
     assert "pandas" not in source
 
 
+def test_tick_configuration_policy_does_not_depend_on_matplotlib_or_date_axis() -> None:
+    source = Path("src/ggstyle/_tick_config.py").read_text()
+    assert "import matplotlib" not in source
+    assert "from matplotlib" not in source
+    assert "from .dates" not in source
+
+
 def test_axis_sync_policy_does_not_depend_on_matplotlib_or_date_axis() -> None:
     source = Path("src/ggstyle/_axis_sync.py").read_text()
     assert "import matplotlib" not in source

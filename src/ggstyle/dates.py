@@ -46,6 +46,7 @@ from . import (
     _formats,
     _grid,
     _mode_lines,
+    _tick_config,
     _tick_positions,
     _tick_rendering,
 )
@@ -54,7 +55,6 @@ from ._axis_summary import AxisSummary as AxisSummary
 from ._axis_summary import summarize_axis as _summarize_axis
 from ._captions import format_caption as _format_caption
 from ._date_summary import minor_below as _minor_below
-from ._frames import to_datetime_index as _as_datetime_index
 from ._parse import to_offset, to_timestamp
 from ._timezones import apply_display_timezone as _apply_display_timezone
 
@@ -405,35 +405,20 @@ class DateAxis:
         ``.ticks(at=["2020-01-01", "2021-07-01"])``,
         ``.ticks(major="yearly", minor="monthly")``, ``.ticks("month-end")``.
         """
-        given = [x for x in (spec, every, n, at, major) if x is not None]
-        if len(given) > 1:
-            raise TypeError(
-                "pass only one of spec, every=, n=, at=, or major= to ticks()"
-            )
-
-        if at is not None:
-            self._explicit_ticks = _as_datetime_index(at)
-            self._major_spec = None
-        elif n is not None:
-            if isinstance(n, bool) or not isinstance(n, int) or n < 1:
-                raise ValueError(f"n must be a positive integer, got {n!r}")
-            self._explicit_ticks = None
-            self._major_spec = ("count", n)
-        elif every is not None:
-            self._explicit_ticks = None
-            self._major_spec = _cadence.resolve(every)
-        elif spec is not None or major is not None:
-            self._explicit_ticks = None
-            value = spec if spec is not None else major
-            self._major_spec = None if value == "auto" else _cadence.resolve(value)
-
-        if minor is not None:
-            if minor == "auto":
-                self._minor_spec = "auto"
-            elif minor is False:
-                self._minor_spec = None
-            else:
-                self._minor_spec = _cadence.resolve(minor)
+        configuration = _tick_config.resolve_tick_configuration(
+            current_major=self._major_spec,
+            current_minor=self._minor_spec,
+            current_explicit=self._explicit_ticks,
+            spec=spec,
+            every=every,
+            n=n,
+            at=at,
+            major=major,
+            minor=minor,
+        )
+        self._major_spec = configuration.major_spec
+        self._minor_spec = configuration.minor_spec
+        self._explicit_ticks = configuration.explicit_ticks
 
         return self._refresh()
 
