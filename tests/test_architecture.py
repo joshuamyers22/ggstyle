@@ -59,3 +59,10 @@ def test_axis_sync_policy_does_not_depend_on_matplotlib_or_date_axis() -> None:
     assert "import matplotlib" not in source
     assert "from matplotlib" not in source
     assert "from .dates" not in source
+
+
+def test_date_range_policy_does_not_depend_on_matplotlib_or_date_axis() -> None:
+    source = Path("src/ggstyle/_date_ranges.py").read_text()
+    assert "import matplotlib" not in source
+    assert "from matplotlib" not in source
+    assert "from .dates" not in source

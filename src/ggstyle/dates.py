@@ -43,6 +43,7 @@ from . import (
     _axis_sync,
     _cadence,
     _coordinates,
+    _date_ranges,
     _formats,
     _grid,
     _mode_lines,
@@ -55,7 +56,7 @@ from ._axis_summary import AxisSummary as AxisSummary
 from ._axis_summary import summarize_axis as _summarize_axis
 from ._captions import format_caption as _format_caption
 from ._date_summary import minor_below as _minor_below
-from ._parse import to_offset, to_timestamp
+from ._parse import to_timestamp
 from ._timezones import apply_display_timezone as _apply_display_timezone
 
 __all__ = ["AxisSummary", "DateAxis", "dates", "sync_dates"]
@@ -593,18 +594,17 @@ class DateAxis:
         """
         if ytd:
             self._require_observations("zoom(ytd=True)")
-            anchor = self.observations[-1]
-            start_ts = pd.Timestamp(year=anchor.year, month=1, day=1)
-            end_ts = anchor
         elif last is not None:
             self._require_observations("zoom(last=...)")
-            anchor = self.observations[-1]
-            start_ts = anchor - to_offset(last)
-            end_ts = anchor
-        else:
-            lo, hi = self._visible_range()
-            start_ts = to_timestamp(start, side="start") if start is not None else lo
-            end_ts = to_timestamp(end, side="end") if end is not None else hi
+
+        start_ts, end_ts = _date_ranges.resolve_zoom_range(
+            self._visible_range(),
+            self.observations,
+            start=start,
+            end=end,
+            last=last,
+            ytd=ytd,
+        )
 
         nums = mdates.date2num(pd.DatetimeIndex([start_ts, end_ts]))
         positions = self._nums_to_pos(np.asarray(nums, dtype=float))
@@ -627,11 +627,9 @@ class DateAxis:
         DateAxis
             This handle, for method chaining.
         """
-        lo, hi = self._visible_range()
-        if left is not None:
-            lo = lo - to_offset(left)
-        if right is not None:
-            hi = hi + to_offset(right)
+        lo, hi = _date_ranges.pad_range(
+            self._visible_range(), left=left, right=right
+        )
         nums = mdates.date2num(pd.DatetimeIndex([lo, hi]))
         positions = self._nums_to_pos(np.asarray(nums, dtype=float))
         self.ax.set_xlim(float(positions[0]), float(positions[1]))
