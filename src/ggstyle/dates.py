@@ -44,10 +44,10 @@ from . import (
     _cadence,
     _coordinates,
     _date_ranges,
-    _formats,
     _grid,
     _mode_lines,
     _tick_config,
+    _tick_plan,
     _tick_positions,
     _tick_rendering,
 )
@@ -55,9 +55,7 @@ from ._axis_data import MissingPolicy
 from ._axis_summary import AxisSummary as AxisSummary
 from ._axis_summary import summarize_axis as _summarize_axis
 from ._captions import format_caption as _format_caption
-from ._date_summary import minor_below as _minor_below
 from ._parse import to_timestamp
-from ._timezones import apply_display_timezone as _apply_display_timezone
 
 __all__ = ["AxisSummary", "DateAxis", "dates", "sync_dates"]
 
@@ -164,9 +162,7 @@ class DateAxis:
         collected = _axis_data.collect(
             self.ax,
             data,
-            existing=_axis_data.AxisData(
-                self._nums, self._missing_values, self._trusted
-            ),
+            existing=_axis_data.AxisData(self._nums, self._missing_values, self._trusted),
             missing=missing,
         )
         self._nums = collected.numbers
@@ -424,24 +420,12 @@ class DateAxis:
         return self._refresh()
 
     def _resolve_major(self, span: pd.Timedelta) -> _cadence.Cadence:
-        spec = self._major_spec
-        if spec is None:
-            return _cadence.auto_cadence(span)[0]
-        if isinstance(spec, tuple) and spec[0] == "count":
-            return _cadence.best_for_count(span, spec[1])
-        return spec
+        return _tick_plan.resolve_major(self._major_spec, span)
 
     def _resolve_minor(
         self, span: pd.Timedelta, major: _cadence.Cadence
     ) -> _cadence.Cadence | None:
-        spec = self._minor_spec
-        if spec is None:
-            return None
-        if spec == "auto":
-            if self._major_spec is None:
-                return _cadence.auto_cadence(span)[1]
-            return _minor_below(major)
-        return spec
+        return _tick_plan.resolve_minor(self._minor_spec, self._major_spec, span, major)
 
     def _ticks_for(
         self, cadence: _cadence.Cadence, lo: pd.Timestamp, hi: pd.Timestamp
@@ -547,9 +531,6 @@ class DateAxis:
         self._tz = zone
         return self._refresh()
 
-    def _apply_tz(self, index: pd.DatetimeIndex) -> pd.DatetimeIndex:
-        return _apply_display_timezone(index, self._tz)
-
     # ------------------------------------------------------------------
     # range
     # ------------------------------------------------------------------
@@ -627,9 +608,7 @@ class DateAxis:
         DateAxis
             This handle, for method chaining.
         """
-        lo, hi = _date_ranges.pad_range(
-            self._visible_range(), left=left, right=right
-        )
+        lo, hi = _date_ranges.pad_range(self._visible_range(), left=left, right=right)
         nums = mdates.date2num(pd.DatetimeIndex([lo, hi]))
         positions = self._nums_to_pos(np.asarray(nums, dtype=float))
         self.ax.set_xlim(float(positions[0]), float(positions[1]))
@@ -668,9 +647,7 @@ class DateAxis:
         )
         self._mode = "collapse"
 
-        _mode_lines.use_collapsed_positions(
-            self.ax, self._original_x, self._nums_to_pos
-        )
+        _mode_lines.use_collapsed_positions(self.ax, self._original_x, self._nums_to_pos)
 
         _annotations.replay(self.ax, self._annotations, self.loc)
         return self.zoom(lo, hi)
@@ -717,9 +694,7 @@ class DateAxis:
         DateAxis
             This handle, for method chaining.
         """
-        self._annotations.append(
-            _annotations.Annotation("vline", (date,), label, kwargs)
-        )
+        self._annotations.append(_annotations.Annotation("vline", (date,), label, kwargs))
         _annotations.draw(self.ax, self._annotations[-1], self.loc)
         return self
 
@@ -846,41 +821,33 @@ class DateAxis:
             lo, hi = self._visible_range()
             if hi < lo:
                 lo, hi = hi, lo
-            span = hi - lo
-
+            explicit_positions = None
             if self._explicit_ticks is not None:
-                label_ts = self._explicit_ticks
-                nums = np.asarray(mdates.date2num(label_ts), dtype=float)
-                positions = self._nums_to_pos(nums)
-                unit = _cadence.auto_cadence(span)[0].unit
-                minor_cadence = None
-            else:
-                major = self._resolve_major(span)
-                unit = major.unit
-                label_ts, positions = self._ticks_for(major, lo, hi)
-                minor_cadence = self._resolve_minor(span, major)
+                nums = np.asarray(mdates.date2num(self._explicit_ticks), dtype=float)
+                explicit_positions = self._nums_to_pos(nums)
+            elif self._mode == "collapse":
+                self._require_observations("tick placement")
 
-            labeller = _formats.resolve(self._fmt_major, unit)
-            labels = labeller(list(self._apply_tz(pd.DatetimeIndex(label_ts))))
-
-            minor_positions = None
-            minor_labels = None
-            if minor_cadence is not None:
-                minor_ts, minor_positions = self._ticks_for(minor_cadence, lo, hi)
-                if self._fmt_minor is not False and self._fmt_minor is not None:
-                    minor_labeller = _formats.resolve(
-                        self._fmt_minor, minor_cadence.unit
-                    )
-                    minor_labels = minor_labeller(
-                        list(self._apply_tz(pd.DatetimeIndex(minor_ts)))
-                    )
+            plan = _tick_plan.build_tick_plan(
+                lo=lo,
+                hi=hi,
+                mode=self._mode,
+                knots=self._nums,
+                major_spec=self._major_spec,
+                minor_spec=self._minor_spec,
+                explicit_ticks=self._explicit_ticks,
+                explicit_positions=explicit_positions,
+                major_format=self._fmt_major,
+                minor_format=self._fmt_minor,
+                timezone=self._tz,
+            )
 
             _tick_rendering.render(
                 self.ax,
-                positions,
-                labels,
-                minor_positions=minor_positions,
-                minor_labels=minor_labels,
+                plan.positions,
+                plan.labels,
+                minor_positions=plan.minor_positions,
+                minor_labels=plan.minor_labels,
                 rotation=self._rotation,
                 horizontal_alignment=self._rotation_ha,
             )
