@@ -1,14 +1,17 @@
-"""Immutable public summary contract for a configured date axis."""
+"""Immutable summary contract and assembly policy for a configured date axis."""
 
 from dataclasses import dataclass
 from typing import Literal
 
 import pandas as pd
 
+from ._date_summary import infer_frequency
+
 
 @dataclass(frozen=True)
 class AxisSummary:
-    """Describe the data and configuration behind a date axis.
+    """
+    Describe the data and configuration behind a date axis.
 
     Parameters
     ----------
@@ -46,3 +49,28 @@ class AxisSummary:
     minor_cadence: str | None
     timezone: str | None
     missing_values: int
+
+
+def summarize_axis(
+    *,
+    mode: Literal["show", "collapse"],
+    observations: pd.DatetimeIndex,
+    major_cadence: str,
+    minor_cadence: str | None,
+    timezone: str | None,
+    missing_values: int,
+) -> AxisSummary:
+    """
+    Build a serializable description from resolved date-axis policy.
+    """
+    return AxisSummary(
+        mode=mode,
+        observations=len(observations),
+        start=observations[0] if len(observations) else None,
+        end=observations[-1] if len(observations) else None,
+        inferred_frequency=infer_frequency(observations),
+        major_cadence=major_cadence,
+        minor_cadence=minor_cadence,
+        timezone=timezone,
+        missing_values=missing_values,
+    )

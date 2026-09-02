@@ -49,8 +49,8 @@ from . import (
 )
 from ._axis_data import MissingPolicy
 from ._axis_summary import AxisSummary as AxisSummary
+from ._axis_summary import summarize_axis as _summarize_axis
 from ._captions import format_caption as _format_caption
-from ._date_summary import infer_frequency as _infer_frequency
 from ._date_summary import minor_below as _minor_below
 from ._frames import to_datetime_index as _as_datetime_index
 from ._parse import to_offset, to_timestamp
@@ -205,21 +205,13 @@ class DateAxis:
         caption : Format the summary for display on a figure.
         """
         observations = self.observations
-        start = observations[0] if len(observations) else None
-        end = observations[-1] if len(observations) else None
-
         lo, hi = self._visible_range()
         span = abs(hi - lo)
-        major = self._summary_major_cadence(span)
-        minor = self._summary_minor_cadence(span)
-        return AxisSummary(
-            mode=cast(Literal["show", "collapse"], self._mode),
-            observations=len(observations),
-            start=start,
-            end=end,
-            inferred_frequency=_infer_frequency(observations),
-            major_cadence=major,
-            minor_cadence=minor,
+        return _summarize_axis(
+            mode=self._mode,
+            observations=observations,
+            major_cadence=self._summary_major_cadence(span),
+            minor_cadence=self._summary_minor_cadence(span),
             timezone=self._tz,
             missing_values=self._missing_values,
         )
