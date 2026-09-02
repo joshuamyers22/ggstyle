@@ -481,6 +481,15 @@ class TestTimezone:
         plt.close(fig)
 
 
+class TestRotation:
+    def test_rotation_and_alignment_are_applied(self, ax):
+        gs.dates(ax).ticks(at=["2020-01-01", "2020-06-01"]).rotate(30, ha="left")
+
+        tick_labels = ax.get_xticklabels()
+        assert all(text.get_rotation() == 30 for text in tick_labels)
+        assert all(text.get_horizontalalignment() == "left" for text in tick_labels)
+
+
 class TestIntraday:
     def test_auto_cadence_is_hourly(self, intraday):
         gs.dates(intraday)

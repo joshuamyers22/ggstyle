@@ -38,3 +38,10 @@ def test_mode_line_adapter_does_not_depend_on_date_axis() -> None:
     source = Path("src/ggstyle/_mode_lines.py").read_text()
     assert "from .dates" not in source
     assert "import ggstyle.dates" not in source
+
+
+def test_tick_rendering_adapter_does_not_depend_on_date_axis_policy() -> None:
+    source = Path("src/ggstyle/_tick_rendering.py").read_text()
+    assert "from .dates" not in source
+    assert "_cadence" not in source
+    assert "pandas" not in source

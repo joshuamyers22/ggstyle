@@ -29,14 +29,13 @@ That is what keeps annotations honest when the mode changes.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
-from matplotlib.ticker import FixedFormatter, FixedLocator
 
 from . import (
     _annotations,
@@ -47,6 +46,7 @@ from . import (
     _grid,
     _mode_lines,
     _tick_positions,
+    _tick_rendering,
 )
 from ._axis_data import MissingPolicy
 from ._axis_summary import AxisSummary as AxisSummary
@@ -879,37 +879,27 @@ class DateAxis:
             labeller = _formats.resolve(self._fmt_major, unit)
             labels = labeller(list(self._apply_tz(pd.DatetimeIndex(label_ts))))
 
-            self.ax.xaxis.set_major_locator(FixedLocator(list(map(float, positions))))
-            self.ax.xaxis.set_major_formatter(FixedFormatter(labels))
-
+            minor_positions = None
+            minor_labels = None
             if minor_cadence is not None:
                 minor_ts, minor_positions = self._ticks_for(minor_cadence, lo, hi)
-                self.ax.xaxis.set_minor_locator(
-                    FixedLocator(list(map(float, minor_positions)))
-                )
-                if self._fmt_minor is False or self._fmt_minor is None:
-                    self.ax.xaxis.set_minor_formatter(
-                        FixedFormatter([""] * len(minor_positions))
-                    )
-                else:
+                if self._fmt_minor is not False and self._fmt_minor is not None:
                     minor_labeller = _formats.resolve(
                         self._fmt_minor, minor_cadence.unit
                     )
-                    self.ax.xaxis.set_minor_formatter(
-                        FixedFormatter(
-                            minor_labeller(list(self._apply_tz(pd.DatetimeIndex(minor_ts))))
-                        )
+                    minor_labels = minor_labeller(
+                        list(self._apply_tz(pd.DatetimeIndex(minor_ts)))
                     )
-            else:
-                self.ax.xaxis.set_minor_locator(FixedLocator([]))
 
-            if self._rotation is not None:
-                for text in self.ax.get_xticklabels():
-                    text.set_rotation(self._rotation)
-                    alignment = cast(
-                        Literal["left", "center", "right"], self._rotation_ha
-                    )
-                    text.set_horizontalalignment(alignment)
+            _tick_rendering.render(
+                self.ax,
+                positions,
+                labels,
+                minor_positions=minor_positions,
+                minor_labels=minor_labels,
+                rotation=self._rotation,
+                horizontal_alignment=self._rotation_ha,
+            )
 
             self._draw_grid(lo, hi)
         finally:
