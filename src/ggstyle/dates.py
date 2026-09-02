@@ -40,6 +40,7 @@ from matplotlib.axes import Axes
 from . import (
     _annotations,
     _axis_data,
+    _axis_sync,
     _cadence,
     _coordinates,
     _formats,
@@ -183,7 +184,7 @@ class DateAxis:
     # ------------------------------------------------------------------
 
     @property
-    def mode(self) -> str:
+    def mode(self) -> Literal["show", "collapse"]:
         """Return the active coordinate mode."""
         return self._mode
 
@@ -948,10 +949,7 @@ def sync_dates(
     comparable across panels instead of assigning different ordinal positions to the
     same date.
     """
-    if mode not in (None, "show", "collapse"):
-        raise ValueError(f"mode must be 'show' or 'collapse', got {mode!r}")
-    if limits not in ("union", "intersection"):
-        raise ValueError(f"limits must be 'union' or 'intersection', got {limits!r}")
+    _axis_sync.validate_options(mode, limits)
 
     axes_list = list(axes)
     if not axes_list:
@@ -960,29 +958,19 @@ def sync_dates(
     for handle in handles:
         handle._require_observations("sync_dates()")
 
-    modes = {handle.mode for handle in handles}
-    if mode is None and len(modes) != 1:
-        raise ValueError("axes use different modes; pass mode='show' or mode='collapse'")
-    target_mode = mode or handles[0].mode
-
-    ranges = [(handle._nums[0], handle._nums[-1]) for handle in handles]
-    if limits == "union":
-        lower = min(item[0] for item in ranges)
-        upper = max(item[1] for item in ranges)
-    else:
-        lower = max(item[0] for item in ranges)
-        upper = min(item[1] for item in ranges)
-        if lower > upper:
-            raise ValueError("axes have no overlapping observation range")
-
-    shared = np.unique(np.concatenate([handle._nums for handle in handles]))
-    lower_date = pd.Timestamp(mdates.num2date(lower)).tz_localize(None)
-    upper_date = pd.Timestamp(mdates.num2date(upper)).tz_localize(None)
+    sync_plan = _axis_sync.plan(
+        [handle._nums for handle in handles],
+        [handle.mode for handle in handles],
+        mode=mode,
+        limits=limits,
+    )
+    lower_date = pd.Timestamp(mdates.num2date(sync_plan.lower)).tz_localize(None)
+    upper_date = pd.Timestamp(mdates.num2date(sync_plan.upper)).tz_localize(None)
     for handle in handles:
         handle.expand()
-        handle._nums = shared.copy()
+        handle._nums = sync_plan.observations.copy()
         handle._trusted = True
-        if target_mode == "collapse":
+        if sync_plan.mode == "collapse":
             handle.collapse()
         handle.zoom(lower_date, upper_date)
     return handles
