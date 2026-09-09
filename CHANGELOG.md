@@ -2,6 +2,15 @@
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## 0.1.1 - 2026-09-09
+
+- Refactor date-axis behavior into focused policy modules for coordinate handling,
+  tick planning and rendering, annotations, captions, grids, synchronization, and
+  timezone display while preserving the public API.
+- Add architectural and policy-level tests for the extracted components.
+- Add reproducible development and package-build tooling and strengthen CI and
+  publishing checks.
+
 ## 0.1.0 - 2026-08-19
 
 Initial public release.
