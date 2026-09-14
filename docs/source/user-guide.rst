@@ -92,6 +92,8 @@ Use ``limits="intersection"`` to display only the overlapping observation range.
 panels already use different modes, pass an explicit mode rather than relying on an
 arbitrary panel to win.
 
+.. _themes:
+
 Themes
 ------
 

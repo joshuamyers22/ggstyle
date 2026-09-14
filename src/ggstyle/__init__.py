@@ -1,7 +1,7 @@
 """ggstyle -- a ggplot2-flavoured plotting layer for Python.
 
-v0.1 is the date axis plus themes. No palettes module and no ``line()`` yet;
-those remain future additions.
+v0.2 is the date axis plus the complete built-in ggplot2-inspired theme set. No
+palettes module and no ``line()`` yet; those remain future additions.
 
     import matplotlib.pyplot as plt
     import ggstyle as gs

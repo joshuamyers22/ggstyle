@@ -1,6 +1,23 @@
 Release notes
 =============
 
+0.2.0
+-----
+
+This release completes ggstyle's built-in ggplot2-inspired theme set with ``bw``,
+``linedraw``, ``light``, ``dark``, ``classic``, ``void``, and ``test``. The existing
+``minimal`` default and ``grey`` theme remain unchanged. Corresponding ggplot2 function
+names such as ``theme_bw`` and ``theme_classic`` are accepted as aliases.
+
+Each theme ships as a standalone matplotlib stylesheet. See :ref:`the Themes section
+<themes>` for the full list and matplotlib-specific fidelity notes.
+
+0.1.1
+-----
+
+This maintenance release refactors date-axis behavior into focused policy modules while
+preserving the public API, and strengthens reproducible build and publishing checks.
+
 0.1.0
 -----
 

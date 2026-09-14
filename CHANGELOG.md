@@ -2,7 +2,7 @@
 
 This project follows [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## 0.2.0 - 2026-09-13
 
 - Add `bw`, `linedraw`, `light`, `dark`, `classic`, `void`, and `test` themes alongside
   the existing `minimal` and `grey` themes.

@@ -2,12 +2,13 @@
 
 A date axis for matplotlib that is easy to use and easy to manipulate.
 
-**v0.1 is the date axis plus themes.** No palettes module and no `line()` yet — those
-remain future additions once the axis ergonomics have real usage behind them.
+**v0.2 is the date axis plus the complete built-in ggplot2-inspired theme set.** No
+palettes module and no `line()` yet — those remain future additions once the axis
+ergonomics have real usage behind them.
 
-This is the first public release. The date-axis behavior is tested, but the project is
-still young and follows semantic versioning. See the [known limits](#known-limits-in-v01)
-before using collapsed mode in production.
+The date-axis behavior is tested, but the project is still young and follows semantic
+versioning. See the [known limits](#known-limits) before using collapsed mode in
+production.
 
 ## Why
 
@@ -203,7 +204,7 @@ collapsed panels.
 - Never resample or interpolate the data silently.
 - Never rotate tick labels by default. Rotation is a symptom of bad tick selection.
 
-## Known limits in v0.1
+## Known limits
 
 - Collapsed mode remaps `Line2D` artists only. Collections (`fill_between`, `scatter`) are
   not yet remapped; annotate through the handle instead.
