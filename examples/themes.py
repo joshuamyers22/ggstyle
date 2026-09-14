@@ -1,4 +1,4 @@
-"""Visual smoke test for the two themes, driven from a polars frame."""
+"""Visual smoke test for all bundled themes, driven from a polars frame."""
 
 import datetime as dt
 

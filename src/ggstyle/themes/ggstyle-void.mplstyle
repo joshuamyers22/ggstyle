@@ -1,0 +1,68 @@
+# ggstyle: void
+#
+# Empty transparent plotting surface with plot titles and legends retained. This
+# is the closest static-rcParams analogue of ggplot2's theme_void; transparent
+# axis labels can still reserve layout space in matplotlib.
+
+figure.facecolor:   none
+figure.edgecolor:   none
+figure.figsize:     7.0, 4.33
+figure.dpi:         110
+
+axes.facecolor:     none
+axes.edgecolor:     none
+axes.linewidth:     0.0
+axes.grid:          False
+axes.axisbelow:     True
+axes.spines.top:    False
+axes.spines.right:  False
+axes.spines.left:   False
+axes.spines.bottom: False
+axes.titlesize:     12
+axes.titlelocation: left
+axes.titlepad:      10
+axes.titlecolor:    1A1A1A
+axes.labelsize:     10
+axes.labelcolor:    none
+axes.labelpad:      0
+axes.prop_cycle:    cycler('color', ['0072B2', 'D55E00', '009E73', 'CC79A7', '56B4E9', 'E69F00', '8C8C8C', '4C3B7A'])
+
+xtick.bottom:       False
+xtick.top:          False
+xtick.labelbottom:  False
+xtick.labeltop:     False
+xtick.color:        none
+xtick.labelcolor:   none
+xtick.labelsize:    9
+xtick.major.size:   0
+xtick.minor.size:   0
+xtick.major.pad:    0
+
+ytick.left:         False
+ytick.right:        False
+ytick.labelleft:    False
+ytick.labelright:   False
+ytick.color:        none
+ytick.labelcolor:   none
+ytick.labelsize:    9
+ytick.major.size:   0
+ytick.minor.size:   0
+ytick.major.pad:    0
+
+lines.linewidth:    1.5
+lines.solid_capstyle: round
+lines.markersize:   5
+
+legend.frameon:     False
+legend.fontsize:    9
+legend.title_fontsize: 9
+
+font.size:          10
+font.family:        sans-serif
+font.sans-serif:    DejaVu Sans, Helvetica Neue, Helvetica, Arial, sans-serif
+
+savefig.dpi:        200
+savefig.bbox:       tight
+savefig.facecolor:  none
+savefig.transparent: True
+savefig.pad_inches: 0.0

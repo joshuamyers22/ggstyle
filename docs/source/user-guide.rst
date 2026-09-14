@@ -98,3 +98,19 @@ Themes
 :func:`ggstyle.use_theme` changes matplotlib settings process-wide. Prefer the scoped
 :class:`ggstyle.theme` context manager in reusable code. Importing ``ggstyle`` does not
 change matplotlib global state.
+
+Nine ggplot2-inspired themes are available: ``minimal``, ``grey``, ``bw``, ``linedraw``,
+``light``, ``dark``, ``classic``, ``void``, and ``test``. ``minimal`` is the default and
+``test`` is intended for stable visual tests rather than presentation output. The
+corresponding ggplot2 spellings, such as ``theme_bw`` and ``theme_classic``, are accepted
+as aliases.
+
+.. code-block:: python
+
+   with gs.theme("classic"):
+       fig, ax = plt.subplots()
+
+Each theme is also a standalone matplotlib stylesheet returned by
+:func:`ggstyle.stylesheet`. Facet-strip styling has no direct core matplotlib equivalent.
+The ``void`` theme hides axis-label text through static matplotlib settings, which can
+leave some layout space reserved for a label.

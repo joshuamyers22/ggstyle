@@ -120,15 +120,47 @@ class TestPandasStillWorks:
 
 
 class TestThemes:
+    EXPECTED_THEMES = (
+        "minimal",
+        "grey",
+        "bw",
+        "linedraw",
+        "light",
+        "dark",
+        "classic",
+        "void",
+        "test",
+    )
+
     def test_minimal_is_the_default(self):
         assert gs.DEFAULT_THEME == "minimal"
         assert gs.available_themes()[0] == "minimal"
 
-    def test_grey_is_second(self):
-        assert gs.available_themes() == ["minimal", "grey"]
+    def test_all_ggplot2_themes_are_available(self):
+        assert gs.available_themes() == list(self.EXPECTED_THEMES)
 
-    def test_gray_spelling_accepted(self):
-        assert gs.stylesheet("gray") == gs.stylesheet("grey")
+    @pytest.mark.parametrize(
+        ("alias", "canonical"),
+        [
+            ("gray", "grey"),
+            ("theme_gray", "grey"),
+            ("theme_grey", "grey"),
+            ("theme_minimal", "minimal"),
+            ("theme_bw", "bw"),
+            ("theme_linedraw", "linedraw"),
+            ("theme_light", "light"),
+            ("theme_dark", "dark"),
+            ("theme_classic", "classic"),
+            ("theme_void", "void"),
+            ("theme_test", "test"),
+        ],
+    )
+    def test_ggplot2_spelling_aliases(self, alias, canonical):
+        assert gs.stylesheet(alias) == gs.stylesheet(canonical)
+
+    def test_every_stylesheet_exists(self):
+        for name in self.EXPECTED_THEMES:
+            assert gs.stylesheet(name).is_file()
 
     def test_unknown_theme_rejected(self):
         with pytest.raises(ValueError, match="unknown theme"):
@@ -145,6 +177,35 @@ class TestThemes:
         with gs.theme("grey"):
             assert plt.rcParams["axes.facecolor"] == "#EBEBEB"
             assert plt.rcParams["grid.color"] == "#FFFFFF"
+
+    @pytest.mark.parametrize(
+        ("name", "facecolor", "grid", "spines"),
+        [
+            ("bw", "white", True, (True, True, True, True)),
+            ("linedraw", "white", True, (True, True, True, True)),
+            ("light", "white", True, (True, True, True, True)),
+            ("dark", "#7F7F7F", True, (False, False, False, False)),
+            ("classic", "white", False, (False, False, True, True)),
+            ("void", "none", False, (False, False, False, False)),
+            ("test", "white", False, (True, True, True, True)),
+        ],
+    )
+    def test_added_theme_surface(self, name, facecolor, grid, spines):
+        with gs.theme(name):
+            assert plt.rcParams["axes.facecolor"] == facecolor
+            assert plt.rcParams["axes.grid"] is grid
+            assert tuple(
+                plt.rcParams[f"axes.spines.{side}"]
+                for side in ("top", "right", "left", "bottom")
+            ) == spines
+
+    def test_void_hides_ticks_and_uses_transparency(self):
+        with gs.theme("void"):
+            assert not plt.rcParams["xtick.bottom"]
+            assert not plt.rcParams["xtick.labelbottom"]
+            assert not plt.rcParams["ytick.left"]
+            assert not plt.rcParams["ytick.labelleft"]
+            assert plt.rcParams["savefig.transparent"] is True
 
     def test_gridlines_are_behind_the_data(self):
         for name in gs.available_themes():
@@ -170,11 +231,12 @@ class TestThemes:
 
     def test_context_manager_restores_exactly(self):
         before = dict(plt.rcParams)
-        with gs.theme("grey"):
-            plt.rcParams["lines.linewidth"] = 99
-        after = dict(plt.rcParams)
-        assert after["axes.facecolor"] == before["axes.facecolor"]
-        assert after["lines.linewidth"] == before["lines.linewidth"]
+        for name in gs.available_themes():
+            with gs.theme(name):
+                plt.rcParams["lines.linewidth"] = 99
+            after = dict(plt.rcParams)
+            assert after["axes.facecolor"] == before["axes.facecolor"]
+            assert after["lines.linewidth"] == before["lines.linewidth"]
 
     def test_import_does_not_mutate_rcparams(self):
         """Importing the package must be inert."""

@@ -132,28 +132,35 @@ ax.set_xlim(handle.loc("2020-01"), handle.loc("2021-01"))
 
 ## Themes
 
-Two ship. `minimal` is the default; `grey` is the ggplot2 `theme_grey` analogue.
+Nine ggplot2-inspired themes ship. `minimal` remains the default.
 
 ```python
 gs.use_theme()             # minimal, process-wide
 gs.use_theme("grey")       # "gray" also accepted
+gs.use_theme("bw")
 
-with gs.theme("grey"):     # scoped; restores every rcParam on exit
+with gs.theme("dark"):     # scoped; restores every rcParam on exit
     ...
 
 plt.style.use(gs.stylesheet())   # the .mplstyle on its own, no ggstyle import needed
 ```
 
-Both spell out the same type scale, colour cycle, and layout, so switching changes the
-panel surface and nothing else — the same separation ggplot2 makes. The colour cycle is
-Okabe–Ito-derived and capped at eight; past eight, direct labelling or faceting is the
-right answer, not a ninth colour.
+Available names are `minimal`, `grey`, `bw`, `linedraw`, `light`, `dark`, `classic`,
+`void`, and `test`. The corresponding ggplot2 function spellings, such as `theme_bw` and
+`theme_classic`, are accepted as aliases. `test` is intended for stable visual tests,
+while `void` removes the plotting surface for maps and other annotation-free displays.
+
+All themes spell out the same type scale and colour cycle, so switching changes the
+non-data surface rather than the plot's identity. The colour cycle is Okabe–Ito-derived
+and capped at eight; past eight, direct labelling or faceting is the right answer, not a
+ninth colour.
 
 Importing `ggstyle` never mutates `rcParams`. Theming is always something you ask for.
 
 Almost all of it is plain rcParams in a `.mplstyle` file, including spine removal
 (`axes.spines.left: False`), which an earlier draft of the design wrongly assumed needed
-Python.
+Python. Facet-strip styling has no core matplotlib equivalent, and transparent axis
+labels in `void` may still reserve layout space.
 
 ## Data frames
 

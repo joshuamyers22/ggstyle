@@ -1,0 +1,72 @@
+# ggstyle: linedraw
+#
+# Pure black lines of varying widths on white, analogous to ggplot2's
+# theme_linedraw. Its deliberately thin gridlines may be unsuitable for some
+# journal production systems.
+
+figure.facecolor:   white
+figure.edgecolor:   white
+figure.figsize:     7.0, 4.33
+figure.dpi:         110
+
+axes.facecolor:     white
+axes.edgecolor:     black
+axes.linewidth:     0.8
+axes.grid:          True
+axes.grid.axis:     both
+axes.grid.which:    both
+axes.axisbelow:     True
+axes.spines.top:    True
+axes.spines.right:  True
+axes.spines.left:   True
+axes.spines.bottom: True
+axes.titlesize:     12
+axes.titlelocation: left
+axes.titlepad:      10
+axes.titlecolor:    black
+axes.labelsize:     10
+axes.labelcolor:    black
+axes.labelpad:      6
+axes.prop_cycle:    cycler('color', ['0072B2', 'D55E00', '009E73', 'CC79A7', '56B4E9', 'E69F00', '8C8C8C', '4C3B7A'])
+
+grid.color:         black
+grid.linewidth:     0.2
+grid.linestyle:     -
+grid.alpha:         1.0
+
+xtick.color:        black
+xtick.labelcolor:   black
+xtick.labelsize:    9
+xtick.direction:    out
+xtick.major.size:   3
+xtick.minor.size:   2
+xtick.major.width:  0.4
+xtick.minor.width:  0.3
+xtick.major.pad:    5
+
+ytick.color:        black
+ytick.labelcolor:   black
+ytick.labelsize:    9
+ytick.direction:    out
+ytick.major.size:   3
+ytick.minor.size:   2
+ytick.major.width:  0.4
+ytick.minor.width:  0.3
+ytick.major.pad:    5
+
+lines.linewidth:    1.5
+lines.solid_capstyle: round
+lines.markersize:   5
+
+legend.frameon:     False
+legend.fontsize:    9
+legend.title_fontsize: 9
+
+font.size:          10
+font.family:        sans-serif
+font.sans-serif:    DejaVu Sans, Helvetica Neue, Helvetica, Arial, sans-serif
+
+savefig.dpi:        200
+savefig.bbox:       tight
+savefig.facecolor:  white
+savefig.pad_inches: 0.1

@@ -1,8 +1,8 @@
 """Theme application.
 
-Two themes ship: ``"minimal"`` (the default) and ``"grey"``. Both spell out the
-same type scale and colour cycle, so switching changes the panel surface and
-nothing else.
+Nine ggplot2-inspired themes ship. ``"minimal"`` remains the default. The
+presentation themes share a type scale and colour cycle, so switching changes
+the non-data surface rather than the plot's identity.
 
 Importing ``ggstyle`` never mutates ``rcParams``. Theming is always something the
 caller asks for, either process-wide via :func:`use_theme` or scoped via
@@ -23,6 +23,13 @@ __all__ = ["DEFAULT_THEME", "available_themes", "theme", "use_theme"]
 _THEMES = {
     "minimal": "ggstyle-minimal.mplstyle",
     "grey": "ggstyle-grey.mplstyle",
+    "bw": "ggstyle-bw.mplstyle",
+    "linedraw": "ggstyle-linedraw.mplstyle",
+    "light": "ggstyle-light.mplstyle",
+    "dark": "ggstyle-dark.mplstyle",
+    "classic": "ggstyle-classic.mplstyle",
+    "void": "ggstyle-void.mplstyle",
+    "test": "ggstyle-test.mplstyle",
 }
 
 #: Spelling and intent aliases. Americans write "gray".
@@ -33,6 +40,13 @@ _ALIASES = {
     "theme_minimal": "minimal",
     "theme_grey": "grey",
     "theme_gray": "grey",
+    "theme_bw": "bw",
+    "theme_linedraw": "linedraw",
+    "theme_light": "light",
+    "theme_dark": "dark",
+    "theme_classic": "classic",
+    "theme_void": "void",
+    "theme_test": "test",
 }
 
 DEFAULT_THEME = "minimal"
@@ -60,7 +74,7 @@ def available_themes() -> list[str]:
     Examples
     --------
     >>> available_themes()
-    ['minimal', 'grey']
+    ['minimal', 'grey', 'bw', 'linedraw', 'light', 'dark', 'classic', 'void', 'test']
     """
     return list(_THEMES)
 
@@ -135,7 +149,8 @@ def use_theme(name: str = DEFAULT_THEME) -> None:
     Notes
     -----
     ``gs.use_theme()`` applies ``"minimal"``; ``gs.use_theme("grey")`` applies the
-    ggplot2-style grey panel. ``"gray"`` is accepted for ``"grey"``.
+    ggplot2-style grey panel. ggplot2 function spellings such as ``"theme_bw"``
+    are accepted as aliases, as is ``"gray"`` for ``"grey"``.
 
     Examples
     --------

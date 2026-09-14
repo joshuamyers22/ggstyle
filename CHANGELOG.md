@@ -2,6 +2,13 @@
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- Add `bw`, `linedraw`, `light`, `dark`, `classic`, `void`, and `test` themes alongside
+  the existing `minimal` and `grey` themes.
+- Accept the corresponding ggplot2 `theme_*` names as aliases and document matplotlib's
+  facet-strip and void-theme layout limitations.
+
 ## 0.1.1 - 2026-09-09
 
 - Refactor date-axis behavior into focused policy modules for coordinate handling,
