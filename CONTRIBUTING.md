@@ -28,6 +28,9 @@ virtual environments, caches, or platform metadata.
 Collapsed-coordinate changes must follow
 [ADR 0001](docs/architecture/0001-collapsed-date-scale.md), which records the observation,
 refresh, synchronization, diagnostic, and transaction contracts for the v0.3 redesign.
+Rendering changes must also follow the
+[visual regression workflow](docs/visual-regression.md); baseline replacements require
+an explanation and review of the generated image diff.
 
 By contributing, you agree that your contributions are licensed under the MIT License.
 

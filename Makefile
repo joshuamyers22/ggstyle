@@ -1,4 +1,4 @@
-.PHONY: sync lint type test docs build check
+.PHONY: sync lint type test visual visual-update docs build check
 
 sync:
 	uv sync --frozen --all-extras
@@ -11,6 +11,12 @@ type:
 
 test:
 	uv run pytest -q --cov=ggstyle --cov-report=term-missing
+
+visual:
+	LANG=C LC_ALL=C TZ=UTC MPLBACKEND=Agg GGSTYLE_RUN_VISUAL=1 uv run --frozen --group visual pytest -q tests/test_visual_regressions.py
+
+visual-update:
+	LANG=C LC_ALL=C TZ=UTC MPLBACKEND=Agg uv run --frozen --group visual python tools/update_visual_baselines.py --accept
 
 docs:
 	uv run python tools/validate_docstrings.py

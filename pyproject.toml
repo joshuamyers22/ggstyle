@@ -42,6 +42,15 @@ dev = ["pytest>=7.0", "pytest-cov", "ruff", "mypy", "pandas-stubs", "polars>=1.0
 polars = ["polars>=1.0"]
 docs = ["sphinx>=7", "numpydoc>=1.6", "pydata-sphinx-theme>=0.15"]
 
+[dependency-groups]
+visual = [
+    "matplotlib==3.11.1; python_version == '3.12'",
+    "numpy==2.5.2; python_version == '3.12'",
+    "pandas==3.0.5; python_version == '3.12'",
+    "pillow==12.3.0; python_version == '3.12'",
+    "pytest==9.1.1; python_version == '3.12'",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/ggstyle"]
 
@@ -52,6 +61,7 @@ include = [
     "/tools",
     "/examples",
     "/docs/architecture",
+    "/docs/visual-regression.md",
     "/docs/source",
     "/README.md",
     "/LICENSE",
@@ -63,6 +73,7 @@ include = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-config --strict-markers"
+markers = ["visual: deterministic pixel comparisons in the pinned renderer job"]
 
 [tool.coverage.run]
 branch = true

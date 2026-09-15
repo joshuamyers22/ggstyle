@@ -26,6 +26,32 @@ jobs:
       - run: uv run ruff check .
       - run: uv run mypy src
 
+  visual:
+    runs-on: ubuntu-24.04
+    env:
+      GGSTYLE_RUN_VISUAL: "1"
+      LANG: C
+      LC_ALL: C
+      MPLBACKEND: Agg
+      TZ: UTC
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen --group visual
+      - run: uv run --frozen --group visual pytest -q tests/test_visual_regressions.py
+      - name: Upload visual differences
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: visual-regression-diffs
+          path: build/visual-results
+          if-no-files-found: ignore
+          retention-days: 14
+
   package:
     runs-on: ubuntu-latest
     steps:
