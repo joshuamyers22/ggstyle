@@ -59,7 +59,7 @@ class DiscreteScale:
         Output used when ``missing="map"``. The aesthetic default is used when
         omitted.
     name : str or None, optional
-        Semantic scale name reserved for guide construction.
+        Guide title. The mapped source-column name is used when omitted.
 
     Notes
     -----
@@ -124,7 +124,7 @@ class ContinuousScale:
     infinite : {"clip", "color", "drop", "raise"}, default "raise"
         Policy for positive and negative infinity.
     name : str or None, optional
-        Semantic scale name reserved for guide construction.
+        Guide title. The mapped source-column name is used when omitted.
     """
 
     palette: Palette = field(default_factory=lambda: palette("sequential"))

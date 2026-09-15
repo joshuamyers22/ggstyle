@@ -219,6 +219,27 @@ in one transaction, including per-row point face colors. A failure restores thos
 properties together with artists, axes state, date state, and the semantic registry.
 Every helper refreshes an existing date handle after drawing, including collapsed mode.
 
+### Automatic guide contract (PR20)
+
+The public `guides(ax)` finalizer derives native legends and colorbars from the complete
+trained semantic registry. Discrete color and linestyle guides merge only when their
+source variable, effective title, ordered levels, and missing entry agree. Registry keys
+already merge equivalent contributions across geometries; distinct variables or titles
+remain separate guides even when their display labels happen to match.
+
+Discrete entries use native proxy artists appropriate to participating line, point, and
+ribbon geometries. Continuous color uses the trained domain and palette in a native
+`Colorbar`; constant domains retain a single truthful data tick. Missing mapped discrete
+values receive an explicit entry. Automatic placement is bounded to four legends and
+four colorbars per axes so unreadable layouts fail before mutation.
+
+Guide ownership is independent of caller-created Matplotlib legends and colorbars.
+Repeated calls in one registry revision preserve object identity, `enabled=False`
+removes only ggstyle-owned guides, and later semantic layers refresh an active finalizer.
+Replacement guides are completely constructed before prior guides are removed. A native
+construction failure therefore preserves prior guides and participates in the semantic
+layer's existing registry/artist rollback path.
+
 ## Explicit exclusions
 
 Version 0.5 will not add bars, histograms, boxplots, density estimates, smoothing,

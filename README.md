@@ -145,7 +145,19 @@ gs.ribbon(
 artists. `ribbon()` only renders caller-supplied lower/upper columns—it performs no
 statistical inference—and returns native `PolyCollection` artists. Missing ribbon
 coordinates break a band by default; use `missing="drop"` to connect across gaps.
-Legends and colorbars remain a later v0.5 step.
+
+Build guides from the complete trained registry after adding semantic layers:
+
+```python
+guide_result = gs.guides(ax)
+```
+
+Discrete mappings become native legends and continuous color mappings become native
+colorbars. Color and linestyle guides merge only when they describe the same variable,
+title, and ordered levels. Distinct mappings remain distinct. Once activated, managed
+guides refresh transactionally after later semantic-layer calls. Existing caller-owned
+legends and colorbars are preserved; `gs.guides(ax, enabled=False)` removes only guides
+owned by ggstyle.
 
 Replace a multi-series line legend with labels at the final visible data points:
 
@@ -426,9 +438,11 @@ from the Matplotlib axes.
 - Unsupported or ambiguous date-bearing artists raise `DateDiscoveryError` during
   preflight. Version 0.4 retains the strict policy and has no permissive warning mode.
 - `.tz()` assumes naive data is UTC when converting for display.
-- `line()`, `points()`, and `ribbon()` share color mappings, but automatic legends and
-  colorbars remain later v0.5 work. Numeric color must be constant within a resolved line
-  or ribbon because each native artist has one color; points map color per observation.
+- `line()`, `points()`, and `ribbon()` share mappings, and `guides()` derives legends and
+  colorbars from them. Automatic guide placement supports at most four distinct legends
+  and four distinct colorbars per axes. Numeric color must be constant within a resolved
+  line or ribbon because each native artist has one color; points map color per
+  observation.
 - The current `finish()` surface coordinates plot, subtitle, caption, axis-title,
   numeric-label formatting, safe existing-axes theming, and direct labels for ordinary
   Cartesian `Line2D` series. General label repulsion, scatter endpoint labels, and guide

@@ -105,6 +105,16 @@ are ignored. Every visible participant must be an ordinary data-transform ``Line
 a rectilinear axes. A mixed line/scatter plot does not receive a misleading partial set:
 it falls back wholly to a legend by default or raises when ``fallback="raise"``.
 
+Semantic-guide ownership
+------------------------
+
+:func:`ggstyle.guides` preserves caller-owned legends and colorbars and manages only the
+objects returned in :class:`ggstyle.GuideResult`. Consequently ``ax.get_legend()`` still
+refers to the caller-owned axes legend; use ``result.legends`` for semantic legends.
+Passing ``enabled=False`` removes managed semantic guides without touching native ones.
+Automatic layout is capped at four distinct legends and four distinct colorbars on one
+axes. Use facets or explicit Matplotlib guides beyond that boundary.
+
 Figure export
 -------------
 

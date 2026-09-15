@@ -35,6 +35,7 @@ from ._semantic_registry import (
     semantic_registry,
 )
 from ._semantic_scales import ContinuousScaleSpec, DiscreteScaleSpec
+from .guides import _GuideUpdate, _prepare_guide_refresh
 from .scales import (
     AestheticScale,
     ContinuousScale,
@@ -503,16 +504,19 @@ def line(
 
     axes_snapshot = capture_axes(ax)
     property_changes: tuple[ArtistChange, ...] = ()
+    guide_update: _GuideUpdate | None = None
     artists: list[Line2D] = []
     state_snapshot = state.snapshot()
 
     def rollback() -> None:
+        if guide_update is not None:
+            guide_update.rollback()
         rollback_artist_changes(property_changes)
         restore_axes(ax, axes_snapshot)
         state.restore(state_snapshot)
 
     def apply(plan: SemanticPlan | None) -> LineResult:
-        nonlocal property_changes
+        nonlocal guide_update, property_changes
         if plan is not None:
             property_changes = prepare_artist_changes(plan, state, ax)
             apply_artist_changes(property_changes)
@@ -542,9 +546,12 @@ def line(
                     cast(Any, targets),
                 )
             )
+        guide_update = _prepare_guide_refresh(ax, plan)
         handle = date_handle(ax)
         if handle is not None and artists:
             cast(Any, handle).refresh()
+        if guide_update is not None:
+            guide_update.commit()
 
         state.commit_layer(ax, "line", layer_id, bindings)
         return LineResult(

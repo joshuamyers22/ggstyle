@@ -69,8 +69,8 @@ consistent. Calls sharing a mapping must therefore use the same explicit scale p
 conflicts fail before drawing. An externally removed complete layer is pruned on the next
 mapped call.
 
-The helpers perform no aggregation, smoothing, interpolation, guide construction, or
-axes creation. They validate scale and grouping policy before drawing and roll back
+The data helpers perform no aggregation, smoothing, interpolation, or axes creation.
+They validate scale and grouping policy before drawing and roll back
 partial artists, axes state, earlier colors/styles, and registry state if rendering or
 date-axis refresh fails. If the axes already has a ggstyle date handle, the handle is
 refreshed automatically, including in collapsed mode.
@@ -117,6 +117,41 @@ Line, point, and ribbon calls on one axes share trained color state when they ma
 same source-column name. A later automatic-domain expansion transactionally updates all
 earlier managed artists. Continuous ribbon color, like continuous line color, must be
 constant within each resolved group.
+
+Automatic semantic guides
+-------------------------
+
+Call :func:`ggstyle.guides` after adding semantic layers. It reads the complete trained
+registry and returns native Matplotlib legends and colorbars through
+:class:`ggstyle.GuideResult`:
+
+.. code-block:: python
+
+   gs.line(frame, x="date", y="value", color="series", ax=ax)
+   gs.points(events, x="date", y="value", color="series", ax=ax)
+   guide_result = gs.guides(ax)
+
+Discrete mappings create legends; continuous color mappings create colorbars. A scale's
+``name=`` becomes its guide title, or the source-column name is used by default. Missing
+discrete values mapped by scale policy receive an explicit ``(missing)`` entry, and
+requested unobserved levels remain visible.
+
+Color and linestyle guides merge only when they use the same source variable, title,
+ordered levels, and missing entry. Different variables or titles stay separate. This is
+deliberately stricter than merging guides merely because their displayed labels happen
+to match.
+
+Once guide construction is activated, subsequent semantic layer calls refresh the
+managed guides after successful scale training. A failed legend or colorbar build leaves
+the previous guides, artists, and registry revision unchanged. Repeated calls within one
+revision return the same native guide objects. Pass ``enabled=False`` to remove managed
+guides and disable live refresh.
+
+Caller-owned legends and colorbars are never replaced or removed. Semantic legends are
+available through ``GuideResult.legends`` rather than ``ax.get_legend()``, which remains
+reserved for a caller-owned axes legend. Automatic placement is intentionally bounded to
+four distinct legends and four distinct colorbars per axes; larger layouts should use
+facets or explicit Matplotlib guide construction.
 
 .. _plot-finishing:
 
@@ -348,9 +383,9 @@ they do not replace checking a finished figure with its actual line weights, mar
 background, and labels.
 
 Palette construction is pure: it neither imports Matplotlib nor changes ``rcParams``.
-The public :func:`ggstyle.line` helper trains its color domain using these palette
-policies through :class:`ggstyle.ContinuousScale`. Legends and colorbars remain later
-v0.5 work.
+The public semantic helpers train color domains using these palette policies through
+:class:`ggstyle.ContinuousScale`; :func:`ggstyle.guides` renders the corresponding native
+colorbars.
 
 Ranges
 ------

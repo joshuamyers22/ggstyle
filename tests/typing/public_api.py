@@ -7,7 +7,9 @@ import pandas as pd
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.collections import PathCollection, PolyCollection
+from matplotlib.colorbar import Colorbar
 from matplotlib.figure import Figure
+from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter
 from typing_extensions import assert_type
@@ -141,6 +143,15 @@ def check_point_and_ribbon_types(ax: Axes, frame: pd.DataFrame) -> None:
     )
     assert_type(ribbon.axes, Axes)
     assert_type(ribbon.artists, tuple[PolyCollection, ...])
+
+
+def check_guide_types(ax: Axes) -> None:
+    """Assert native legend and colorbar result types."""
+    result = assert_type(gs.guides(ax), gs.GuideResult)
+    assert_type(result.axes, Axes)
+    assert_type(result.legends, tuple[Legend, ...])
+    assert_type(result.colorbars, tuple[Colorbar, ...])
+    assert_type(result.diagnostics, tuple[str, ...])
 
 
 def check_save_types(figure: Figure, destination: Path) -> None:

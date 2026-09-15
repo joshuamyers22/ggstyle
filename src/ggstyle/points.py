@@ -28,6 +28,7 @@ from ._semantic_artists import (
 )
 from ._semantic_registry import MappingRequest, SemanticPlan, semantic_registry
 from ._semantic_scales import ContinuousScaleSpec, DiscreteScaleSpec
+from .guides import _GuideUpdate, _prepare_guide_refresh
 from .line import (
     GroupMissingPolicy,
     _assignments,
@@ -349,15 +350,18 @@ def points(
     axes_snapshot = capture_axes(ax)
     state_snapshot = state.snapshot()
     property_changes: tuple[ArtistChange, ...] = ()
+    guide_update: _GuideUpdate | None = None
     artists: list[PathCollection] = []
 
     def rollback() -> None:
+        if guide_update is not None:
+            guide_update.rollback()
         rollback_artist_changes(property_changes)
         restore_axes(ax, axes_snapshot)
         state.restore(state_snapshot)
 
     def apply(plan: SemanticPlan | None) -> PointResult:
-        nonlocal property_changes
+        nonlocal guide_update, property_changes
         if plan is not None:
             property_changes = prepare_artist_changes(plan, state, ax)
             apply_artist_changes(property_changes)
@@ -383,9 +387,12 @@ def points(
                     cast(Any, targets),
                 )
             )
+        guide_update = _prepare_guide_refresh(ax, plan)
         handle = date_handle(ax)
         if handle is not None and artists:
             cast(Any, handle).refresh()
+        if guide_update is not None:
+            guide_update.commit()
         state.commit_layer(ax, "points", layer_id, bindings)
         return PointResult(
             ax,

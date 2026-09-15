@@ -28,6 +28,7 @@ from .formats import (
     label_si,
 )
 from .formatters import as_formatter
+from .guides import GuideResult, guides
 from .line import LineResult, line
 from .palettes import Palette, available_palettes, palette
 from .points import PointResult, points
@@ -59,6 +60,7 @@ __all__ = [
     "EndLabelSpec",
     "FinishPlan",
     "FinishResult",
+    "GuideResult",
     "LineResult",
     "NumericLabeller",
     "Palette",
@@ -73,6 +75,7 @@ __all__ = [
     "dates",
     "end_labels",
     "finish",
+    "guides",
     "label_currency",
     "label_number",
     "label_percent",

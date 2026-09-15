@@ -39,6 +39,9 @@ Matplotlib recipe to ggstyle
    * - Tidy-data points and explicit bands
      - Scatter partitioning or ``fill_between`` calls with shared color policy
      - ``gs.points(...)`` and ``gs.ribbon(..., lower=..., upper=...)``
+   * - Semantic legends and colorbars
+     - Proxy artists, scalar mappables, merge rules, and lifecycle management
+     - ``gs.guides(ax)``
    * - Publication export
      - Figure sizing, metadata, bounds, and overwrite checks
      - ``gs.save(...)``
@@ -73,7 +76,8 @@ trained aesthetic and date registries across calls. Mapped column names and fixe
 style are separate. Ribbons require explicit lower and upper columns and do not infer
 statistics.
 
-Automatic guides remain subsequent v0.5 work. Use native Matplotlib for unusual artist
-construction. Seaborn objects can compile a single plot onto an
+Call :func:`ggstyle.guides` to construct native legends and colorbars from the shared
+trained registry. Use native Matplotlib for unusual artist or guide construction.
+Seaborn objects can compile a single plot onto an
 existing axes before ggstyle finishing; plotnine remains the stronger choice when a broad
 grammar and its own facets, scales, themes, and guides are the primary requirement.

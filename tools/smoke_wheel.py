@@ -80,6 +80,12 @@ def main() -> None:
         )
         if len(points.artists) != 1 or len(ribbon.artists) != 1:
             raise RuntimeError("installed wheel returned invalid point or ribbon objects")
+        semantic_guides = gs.guides(ax)
+        if len(semantic_guides.legends) != 1 or semantic_guides.colorbars:
+            raise RuntimeError("installed wheel returned invalid semantic guides")
+        if semantic_guides.legends[0].get_title().get_text() != "series":
+            raise RuntimeError("installed wheel returned an invalid guide title")
+        gs.guides(ax, enabled=False)
         line = semantic.artists[0]
         result = gs.finish(
             ax,

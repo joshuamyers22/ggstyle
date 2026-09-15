@@ -22,6 +22,11 @@ This project follows [Semantic Versioning](https://semver.org/).
   axes, and roll back cross-geometry updates atomically. Points support per-observation
   continuous color; ribbons require explicit bounds, break on missing coordinates by
   default, optionally validate bound order, and never infer statistics or labels.
+- Add public `guides()` and immutable `GuideResult` for automatic native legends and
+  colorbars derived from the complete semantic registry. Compatible color/linestyle
+  mappings merge by variable, title, levels, and missing entry; distinct mappings stay
+  separate. Managed guides refresh after later layers, coexist with caller-owned guides,
+  and roll back atomically when native guide construction fails.
 
 ## 0.4.0 - 2026-09-15
 

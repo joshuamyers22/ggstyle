@@ -23,6 +23,11 @@ Semantic rendering
 .. autoclass:: ggstyle.RibbonResult
    :members:
 
+.. autofunction:: ggstyle.guides
+
+.. autoclass:: ggstyle.GuideResult
+   :members:
+
 .. autoclass:: ggstyle.AestheticScale
    :members: as_dict, describe
 
