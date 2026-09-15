@@ -56,6 +56,26 @@ summary = gs.dates(ax).summary()
 caption = gs.dates(ax).caption(add=True)
 ```
 
+### Finish labels
+
+Apply a coherent title hierarchy and axis labels to the existing axes:
+
+```python
+result = gs.finish(
+    ax,
+    title="Revenue",
+    subtitle="Trailing twelve months",
+    caption="Source: annual report",
+    x=gs.axis(title="Date"),
+    y=gs.axis(title="USD", labels=gs.label_currency("$", decimals=0)),
+)
+```
+
+`result.axes` is exactly `ax`; all returned artists are native Matplotlib objects.
+Subtitle and caption artists participate in figure layout, repeated calls replace them
+in place, and `False` removes them. Use `dry_run=True` to validate and inspect the
+operation without mutation. `finish()` never edits data artists or global `rcParams`.
+
 ### Ticks — where they go
 
 ```python
@@ -267,6 +287,9 @@ from the Matplotlib axes.
 - Palettes map normalized values and select colours; data-domain training, category
   assignment, legends, and colorbars remain ordinary Matplotlib work until semantic
   scales land.
+- The current `finish()` surface coordinates plot, subtitle, caption, axis-title, and
+  numeric-label formatting only. Theme overrides, guide layout, saving, and endpoint
+  labels remain later v0.4 work.
 
 ## Tests
 

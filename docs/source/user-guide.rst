@@ -1,6 +1,54 @@
 User guide
 ==========
 
+.. _plot-finishing:
+
+Plot finishing
+--------------
+
+:func:`ggstyle.finish` applies plot and axis labels to an existing Matplotlib
+``Axes`` as one validated transaction. It returns a :class:`ggstyle.FinishResult`
+containing the same axes, the native text artists affected by the request, and the
+immutable plan that was applied:
+
+.. code-block:: python
+
+   result = gs.finish(
+       ax,
+       title="Revenue",
+       subtitle="Trailing twelve months",
+       caption="Source: annual report",
+       x=gs.axis(title="Date"),
+       y=gs.axis(
+           title="Revenue",
+           labels=gs.label_currency("$", scale=1_000_000, suffix="M"),
+       ),
+   )
+
+The :func:`ggstyle.axis` factory returns an immutable :class:`ggstyle.AxisSpec`.
+Numeric labellers are installed through the same explicit ``FuncFormatter`` adapter
+available as :func:`ggstyle.as_formatter`.
+
+Subtitles follow Matplotlib's active left, centre, or right title location. Captions are
+right-aligned beneath the corresponding axes. Both are ordinary ``Text`` artists marked
+as participating in layout. If their figure has no layout engine, ``finish`` enables
+constrained layout; an existing tight, constrained, or custom engine is preserved.
+Multiline outer text contributes its full bounds to constrained layout.
+
+Repeated calls update the same managed subtitle and caption artists. ``None`` leaves a
+managed value unchanged, while ``subtitle=False`` or ``caption=False`` removes it. An
+empty string clears a standard plot or axis title. If managed text was removed through
+Matplotlib directly, a later explicit value creates a safe replacement.
+
+Pass ``dry_run=True`` to receive a :class:`ggstyle.FinishPlan` without drawing a canvas
+or changing axes, artists, layout, or global ``rcParams``. Commit failures restore label
+text, formatters, managed artists, and layout state. Data artist coordinates, transforms,
+labels, and colours are never changed.
+
+This first finishing slice does not accept theme overrides, legend placement, guide
+titles, saving options, or endpoint labels. Those remain separate planned work rather
+than unvalidated keyword forwarding.
+
 Date-axis model
 ---------------
 

@@ -34,6 +34,26 @@ Adopt a matplotlib axis
 The :func:`ggstyle.dates` call returns a :class:`ggstyle.DateAxis`. Its methods return
 the same handle, so operations can be chained.
 
+Finish plot labels
+------------------
+
+Add the plot and axis labels as one validated operation:
+
+.. code-block:: python
+
+   result = gs.finish(
+       ax,
+       title="Revenue",
+       subtitle="Trailing twelve months",
+       caption="Source: annual report",
+       x=gs.axis(title="Date"),
+       y=gs.axis(title="USD"),
+   )
+
+``result.axes`` is the original Matplotlib axes and ``result.artists`` contains ordinary
+Matplotlib text artists. See :ref:`plot-finishing` for layout, replacement, and dry-run
+behavior.
+
 Choose what to configure
 ------------------------
 

@@ -14,6 +14,9 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Add immutable qualitative, sequential, and diverging palettes with strict qualitative
   cardinality, CIELAB interpolation, explicit missing/out-of-bounds policies, theme-cycle
   integration, and colour-vision regression gates.
+- Add transactional `finish()` and immutable `axis()` specifications for coherent plot,
+  subtitle, caption, and axis labels. Managed outer text participates in figure layout,
+  supports safe replacement/removal, and retains native Matplotlib axes and artists.
 
 ## 0.3.0 - 2026-09-15
 

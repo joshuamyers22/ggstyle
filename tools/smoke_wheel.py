@@ -37,6 +37,17 @@ def main() -> None:
     figure, ax = plt.subplots()
     try:
         ax.fill_between(dates, [1.0, 2.0, 1.5], [1.5, 2.5, 2.0])
+        result = gs.finish(
+            ax,
+            title="Installed wheel",
+            subtitle="Layout-aware labels",
+            caption="ggstyle smoke test",
+            y=gs.axis(title="Value", labels=gs.label_number(decimals=1)),
+        )
+        if result.axes is not ax or not isinstance(result.plan, gs.FinishPlan):
+            raise RuntimeError("installed wheel returned invalid finishing objects")
+        if len(result.artists) != 4:
+            raise RuntimeError("installed wheel did not create every requested label")
         handle = gs.dates(ax).ticks("daily").collapse()
         if not handle.observations.equals(dates):
             raise RuntimeError("installed wheel discovered incorrect observations")

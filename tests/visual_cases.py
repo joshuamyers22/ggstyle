@@ -138,9 +138,7 @@ def synchronized_panels() -> Figure:
     axes[1, 0].plot(right_dates, _VALUES[1:], marker="s", color=_COLORS[1])
 
     handles = gs.sync_dates(axes[:, 0], mode="collapse")
-    for ax, handle, title in zip(
-        axes[:, 0], handles, ("Panel A", "Panel B"), strict=True
-    ):
+    for ax, handle, title in zip(axes[:, 0], handles, ("Panel A", "Panel B"), strict=True):
         handle.ticks(at=_DATES).fmt("%b %d")
         ax.set_title(title)
         ax.set_ylabel("value")
@@ -178,12 +176,33 @@ def theme_gallery() -> Figure:
     return figure
 
 
+def finished_labels() -> Figure:
+    """Build a multiline title hierarchy with layout-managed outer text."""
+    with gs.theme("test"):
+        figure, ax = plt.subplots(figsize=(5.6, 3.4), dpi=100)
+        x = np.arange(6)
+        ax.plot(x, [1.0, 1.8, 1.5, 2.4, 2.7, 3.1], marker="o")
+        gs.finish(
+            ax,
+            title="Revenue",
+            subtitle="Trailing six periods\nPreliminary results",
+            caption="Source: illustrative data",
+            x=gs.axis(title="Period"),
+            y=gs.axis(title="USD", labels=gs.label_currency("$", decimals=1)),
+        )
+
+    assert figure.get_layout_engine() is not None
+    assert len(ax.texts) == 2
+    return figure
+
+
 CASES: dict[str, FigureBuilder] = {
     "line_modes": line_modes,
     "annotation_modes": annotation_modes,
     "fill_between_modes": fill_between_modes,
     "synchronized_panels": synchronized_panels,
     "theme_gallery": theme_gallery,
+    "finished_labels": finished_labels,
 }
 
 

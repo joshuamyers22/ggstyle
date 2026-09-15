@@ -24,11 +24,16 @@ numpydoc_xref_param_type = False
 doctest_global_setup = """
 from ggstyle import (
     Cadence,
+    AxisSpec,
+    FinishPlan,
+    FinishResult,
     Palette,
     as_formatter,
+    axis,
     available_palettes,
     available_themes,
     dates,
+    finish,
     label_currency,
     label_number,
     label_percent,

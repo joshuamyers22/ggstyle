@@ -1,6 +1,7 @@
 """Static assertions for the public fluent API shipped with ``py.typed``."""
 
 import pandas as pd
+from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.ticker import FuncFormatter
 from typing_extensions import assert_type
@@ -52,3 +53,16 @@ def check_palette_types() -> None:
     assert_type(selected.sample(5), tuple[str, ...])
     assert_type(selected.at(0.5), str)
     assert_type(gs.available_palettes(), list[str])
+
+
+def check_finish_types(ax: Axes, dry_run: bool) -> None:
+    """Assert concrete types for axis specs, plans, and committed results."""
+    specification = assert_type(
+        gs.axis(title="Share", labels=gs.label_percent()), gs.AxisSpec
+    )
+    result = assert_type(gs.finish(ax, title="Report", y=specification), gs.FinishResult)
+    assert_type(result.axes, Axes)
+    assert_type(result.artists, tuple[Artist, ...])
+    assert_type(result.plan, gs.FinishPlan)
+    assert_type(gs.finish(ax, dry_run=True), gs.FinishPlan)
+    assert_type(gs.finish(ax, dry_run=dry_run), gs.FinishPlan | gs.FinishResult)
