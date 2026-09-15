@@ -43,3 +43,12 @@ def check_numeric_labeller_types() -> None:
     assert_type(gs.label_number(), gs.NumericLabeller)
     assert_type(gs.label_si(unit="B"), gs.NumericLabeller)
     assert_type(gs.as_formatter(percent), FuncFormatter)
+
+
+def check_palette_types() -> None:
+    """Assert immutable palette construction and lookup result types."""
+    selected = assert_type(gs.palette("sequential"), gs.Palette)
+    assert_type(selected.colors, tuple[str, ...])
+    assert_type(selected.sample(5), tuple[str, ...])
+    assert_type(selected.at(0.5), str)
+    assert_type(gs.available_palettes(), list[str])

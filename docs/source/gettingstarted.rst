@@ -60,3 +60,16 @@ Numeric label factories remain independent of the date-axis handle:
 
 See :ref:`numeric-labels` for percentage, grouped-number, SI-prefix, scaling, and
 non-finite-value behavior.
+
+Choose a palette
+----------------
+
+Use the public qualitative cycle for several series, or sample a continuous palette:
+
+.. code-block:: python
+
+   ax.set_prop_cycle(color=gs.palette("qualitative").colors)
+   five_colors = gs.palette("sequential", n=5).colors
+
+Palette construction does not apply a theme or mutate global Matplotlib settings. See
+:ref:`palettes` for missing values, out-of-bounds policies, and diverging midpoints.

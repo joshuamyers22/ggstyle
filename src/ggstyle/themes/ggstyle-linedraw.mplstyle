@@ -27,7 +27,7 @@ axes.titlecolor:    black
 axes.labelsize:     10
 axes.labelcolor:    black
 axes.labelpad:      6
-axes.prop_cycle:    cycler('color', ['0072B2', 'D55E00', '009E73', 'CC79A7', '56B4E9', 'E69F00', '8C8C8C', '4C3B7A'])
+axes.prop_cycle:    cycler('color', ['0072B2', 'D55E00', '009E73', 'CC79A7', '56B4E9', 'E69F00', '000000', '4C3B7A'])
 
 grid.color:         black
 grid.linewidth:     0.2

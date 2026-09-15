@@ -24,13 +24,16 @@ numpydoc_xref_param_type = False
 doctest_global_setup = """
 from ggstyle import (
     Cadence,
+    Palette,
     as_formatter,
+    available_palettes,
     available_themes,
     dates,
     label_currency,
     label_number,
     label_percent,
     label_si,
+    palette,
     use_theme,
 )
 """

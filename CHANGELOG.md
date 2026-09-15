@@ -11,6 +11,9 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Add immutable, locale-independent percent, currency, grouped-number, and SI-prefix
   labellers with explicit scaling, precision, negative, NaN, and infinity policies, plus
   a typed adapter to Matplotlib's native `FuncFormatter`.
+- Add immutable qualitative, sequential, and diverging palettes with strict qualitative
+  cardinality, CIELAB interpolation, explicit missing/out-of-bounds policies, theme-cycle
+  integration, and colour-vision regression gates.
 
 ## 0.3.0 - 2026-09-15
 

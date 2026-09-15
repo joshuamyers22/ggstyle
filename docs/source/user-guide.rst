@@ -57,6 +57,50 @@ Matplotlib settings. Installation remains an ordinary Matplotlib operation, and 
 returned :class:`matplotlib.ticker.FuncFormatter` remains available for further
 customization.
 
+.. _palettes:
+
+Palettes
+--------
+
+:func:`ggstyle.palette` returns an immutable :class:`ggstyle.Palette`. The qualitative
+palette is the eight-colour cycle shared by every ggstyle theme. Selection preserves its
+reviewed order and a request above eight raises instead of silently creating colours that
+are difficult to distinguish:
+
+.. code-block:: python
+
+   series_colors = gs.palette("qualitative", n=4).colors
+   ax.set_prop_cycle(color=series_colors)
+
+Sequential and diverging palettes provide deterministic CIELAB interpolation over an
+already-normalized interval. Diverging samples require an odd count so the neutral colour
+is always represented, and ``midpoint=`` controls its normalized position:
+
+.. code-block:: python
+
+   sequential = gs.palette("sequential", n=5)
+   diverging = gs.palette("diverging", n=5, midpoint=0.4)
+
+   assert sequential.at(0.0) == sequential.colors[0]
+   assert diverging.at(0.4) == "#F7F7F7"
+
+``None`` and NaN return ``missing_color``. Values outside zero through one are clipped by
+default; ``out_of_bounds="raise"`` rejects them, while ``"color"`` requires explicit
+``under_color`` and ``over_color`` values. These policies are part of the palette object
+and survive resampling.
+
+The qualitative cycle has regression gates for pairwise separation under the
+Machado–Oliveira–Fernandes colour-vision simulations and against light, grey, and dark
+theme surfaces. Sequential lightness and both sides of the diverging palette are also
+ordered under those simulations. These tests reduce predictable accessibility failures;
+they do not replace checking a finished figure with its actual line weights, markers,
+background, and labels.
+
+Palette construction is pure: it neither imports Matplotlib nor changes ``rcParams``.
+The API selects colours and maps normalized values only. Training a data domain, assigning
+categories, and constructing legends or colorbars remain ordinary Matplotlib operations
+until semantic scales land in a later release.
+
 Ranges
 ------
 

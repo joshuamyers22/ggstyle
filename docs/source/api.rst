@@ -37,6 +37,16 @@ Numeric labels
 
 .. autofunction:: ggstyle.as_formatter
 
+Palettes
+--------
+
+.. autoclass:: ggstyle.Palette
+   :members:
+
+.. autofunction:: ggstyle.palette
+
+.. autofunction:: ggstyle.available_palettes
+
 Themes
 ------
 

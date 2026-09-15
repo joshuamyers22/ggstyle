@@ -5,8 +5,8 @@ A date axis for matplotlib that is easy to use and easy to manipulate.
 **v0.3 adds production-safe collapsed coordinates for native lines, scatter points, and
 fill-between bands.** It also includes the complete built-in ggplot2-inspired theme set.
 The current development API adds pure numeric labellers with an explicit Matplotlib
-adapter. No palettes module and no `line()` yet—those remain future additions once the
-axis ergonomics have real usage behind them.
+adapter plus immutable qualitative, sequential, and diverging palettes. There is no
+`line()` helper yet; native Matplotlib plotting remains the intended path.
 
 The date-axis behavior is tested, but the project is still young and follows semantic
 versioning. See the [known limits](#known-limits) before using collapsed mode in
@@ -101,6 +101,24 @@ Factories do not mutate Matplotlib. The explicit adapter returns an ordinary
 `matplotlib.ticker.FuncFormatter`, so axes and formatter objects remain directly
 available.
 
+### Palettes
+
+The palette API exposes the shared eight-colour theme cycle and perceptually ordered
+continuous options without changing Matplotlib configuration:
+
+```python
+ax.set_prop_cycle(color=gs.palette("qualitative").colors)
+
+colors = gs.palette("sequential", n=5).colors
+neutral = gs.palette("diverging").at(0.5)  # "#F7F7F7"
+```
+
+Qualitative requests above eight fail instead of manufacturing ambiguous colours.
+Diverging samples require an odd count so their explicit neutral midpoint is retained.
+Continuous lookup makes missing and out-of-bounds behavior explicit through
+`missing_color=` and `out_of_bounds=`. Palette values are immutable and can be passed to
+ordinary Matplotlib cycles and colormaps.
+
 ### Range
 
 Partial strings expand to whole periods, pandas-style:
@@ -174,10 +192,11 @@ Available names are `minimal`, `grey`, `bw`, `linedraw`, `light`, `dark`, `class
 `theme_classic`, are accepted as aliases. `test` is intended for stable visual tests,
 while `void` removes the plotting surface for maps and other annotation-free displays.
 
-All themes spell out the same type scale and colour cycle, so switching changes the
-non-data surface rather than the plot's identity. The colour cycle is Okabe–Ito-derived
-and capped at eight; past eight, direct labelling or faceting is the right answer, not a
-ninth colour.
+All themes spell out the same type scale and public qualitative colour cycle, so switching
+changes the non-data surface rather than the plot's identity. The cycle is Okabe–Ito-derived,
+uses black in place of grey for stronger separation from the dark-theme surface, and is
+capped at eight; past eight, direct labelling or faceting is the right answer, not a ninth
+colour.
 
 Importing `ggstyle` never mutates `rcParams`. Theming is always something you ask for.
 
@@ -245,7 +264,9 @@ from the Matplotlib axes.
 - Unsupported or ambiguous date-bearing artists raise `DateDiscoveryError` during
   preflight. Version 0.3 has no permissive warning mode.
 - `.tz()` assumes naive data is UTC when converting for display.
-- No palettes module yet: the colour cycle lives in the stylesheets.
+- Palettes map normalized values and select colours; data-domain training, category
+  assignment, legends, and colorbars remain ordinary Matplotlib work until semantic
+  scales land.
 
 ## Tests
 

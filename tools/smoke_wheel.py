@@ -22,6 +22,16 @@ def main() -> None:
         raise RuntimeError(f"smoke test imported repository source: {installed}")
     if not installed.with_name("py.typed").is_file():
         raise RuntimeError("installed wheel is missing its py.typed marker")
+    if gs.available_palettes() != ["qualitative", "sequential", "diverging"]:
+        raise RuntimeError("installed wheel is missing the public palettes")
+    if gs.palette("sequential", n=3).at(0.5) != "#26908B":
+        raise RuntimeError("installed wheel produced an unexpected palette lookup")
+    try:
+        gs.palette("qualitative", n=9)
+    except ValueError:
+        pass
+    else:
+        raise RuntimeError("installed wheel synthesized a ninth qualitative color")
 
     dates = pd.DatetimeIndex(["2024-01-02", "2024-01-03", "2024-01-08"])
     figure, ax = plt.subplots()
