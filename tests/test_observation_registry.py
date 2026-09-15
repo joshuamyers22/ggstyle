@@ -44,17 +44,221 @@ def test_scatter_added_while_collapsed_refreshes_without_geometry_mutation() -> 
         plt.close(fig)
 
 
-def test_polygon_only_discovery_fails_with_explicit_data_remedy() -> None:
+def test_polygon_only_axes_discovers_dates_without_mutating_geometry() -> None:
     fig, ax = plt.subplots()
     try:
         dates = pd.date_range("2024-01-01", periods=3)
-        ax.fill_between(dates, [1.0, 2.0, 3.0], [2.0, 3.0, 4.0])
+        collection = ax.fill_between(
+            dates, [1.0, 2.0, 3.0], [2.0, 3.0, 4.0]
+        )
+        vertices = [path.vertices.copy() for path in collection.get_paths()]
+        codes = [path.codes.copy() for path in collection.get_paths()]
 
-        with pytest.raises(gs.DateDiscoveryError, match=r"dates\(ax, data="):
+        handle = gs.dates(ax).collapse().expand().collapse()
+
+        assert list(handle.observations) == list(dates)
+        assert np.allclose(
+            ax.xaxis.get_transform().transform(mdates.date2num(dates)),
+            np.arange(3.0),
+        )
+        for path, expected_vertices, expected_codes in zip(
+            collection.get_paths(), vertices, codes, strict=True
+        ):
+            assert np.array_equal(path.vertices, expected_vertices)
+            assert np.array_equal(path.codes, expected_codes)
+    finally:
+        plt.close(fig)
+
+
+@pytest.mark.parametrize("missing", ["mask", "nan"])
+def test_polygon_discovery_splits_at_missing_bounds(missing: str) -> None:
+    fig, ax = plt.subplots()
+    try:
+        dates = pd.date_range("2024-01-01", periods=5)
+        lower = np.ma.array(
+            [1.0, 2.0, 3.0, 2.0, 1.0],
+            mask=[False, False, missing == "mask", False, False],
+        )
+        if missing == "nan":
+            lower[2] = np.nan
+        collection = ax.fill_between(dates, lower, np.asarray(lower) + 1.0)
+
+        handle = gs.dates(ax)
+
+        assert list(handle.observations) == list(dates[[0, 1, 3, 4]])
+        assert len(collection.get_paths()) == 2
+    finally:
+        plt.close(fig)
+
+
+def test_polygon_discovery_uses_only_where_selected_source_vertices() -> None:
+    fig, ax = plt.subplots()
+    try:
+        dates = pd.date_range("2024-01-01", periods=5)
+        selected = np.array([False, True, True, False, False])
+        ax.fill_between(dates, np.arange(5.0), 0.0, where=selected)
+
+        handle = gs.dates(ax)
+
+        assert list(handle.observations) == list(dates[[1, 2]])
+    finally:
+        plt.close(fig)
+
+
+def test_polygon_discovery_excludes_interpolated_crossing_vertices() -> None:
+    fig, ax = plt.subplots()
+    try:
+        dates = pd.date_range("2024-01-01", periods=5, freq="2D")
+        values = np.array([-1.0, 1.0, -1.0, 1.0, -1.0])
+        collection = ax.fill_between(
+            dates,
+            values,
+            0.0,
+            where=values > 0,
+            interpolate=True,
+        )
+        source_numbers = mdates.date2num(dates[[1, 3]])
+        rendered_numbers = np.concatenate(
+            [path.vertices[:, 0] for path in collection.get_paths()]
+        )
+
+        handle = gs.dates(ax)
+
+        assert list(handle.observations) == list(dates[[1, 3]])
+        assert any(
+            not np.any(np.isclose(source_numbers, number))
+            for number in rendered_numbers
+        )
+    finally:
+        plt.close(fig)
+
+
+def test_polygon_path_rebuild_replaces_its_provenance() -> None:
+    fig, ax = plt.subplots()
+    try:
+        initial = pd.date_range("2024-01-01", periods=3)
+        replacement = pd.date_range("2024-02-01", periods=2)
+        collection = ax.fill_between(initial, [1.0, 2.0, 1.0], 0.0)
+        handle = gs.dates(ax).collapse()
+        x = np.asarray(mdates.date2num(replacement), dtype=float)
+        vertices = np.array(
+            [
+                [x[0], 0.0],
+                [x[0], 1.0],
+                [x[1], 2.0],
+                [x[1], 0.0],
+                [x[1], 0.0],
+                [x[0], 0.0],
+            ]
+        )
+        collection.set_verts([vertices])
+
+        handle.refresh()
+
+        assert list(handle.observations) == list(replacement)
+    finally:
+        plt.close(fig)
+
+
+def test_removed_polygon_stops_contributing_on_refresh() -> None:
+    fig, ax = plt.subplots()
+    try:
+        first = pd.date_range("2024-01-01", periods=2)
+        second = pd.date_range("2024-02-01", periods=2)
+        removed = ax.fill_between(first, [1.0, 2.0], 0.0)
+        ax.fill_between(second, [2.0, 1.0], 0.0)
+        handle = gs.dates(ax)
+
+        removed.remove()
+        handle.refresh()
+
+        assert list(handle.observations) == list(second)
+    finally:
+        plt.close(fig)
+
+
+def test_polygon_refresh_propagates_through_shared_registry() -> None:
+    fig, axes = plt.subplots(2, 1)
+    try:
+        initial = pd.date_range("2024-01-01", periods=2)
+        axes[0].plot(initial, [1.0, 2.0])
+        axes[1].fill_between(initial, [2.0, 1.0], 0.0)
+        left, right = gs.sync_dates(axes, mode="collapse")
+        later = pd.date_range("2024-01-03", periods=2)
+        axes[1].fill_between(later, [1.0, 2.0], 0.0)
+
+        left.refresh()
+
+        expected = initial.append(later)
+        assert list(left.observations) == list(expected)
+        assert left.observations.equals(right.observations)
+        assert np.allclose(
+            axes[0].xaxis.get_transform().transform(mdates.date2num(expected)),
+            np.arange(4.0),
+        )
+    finally:
+        plt.close(fig)
+
+
+def test_midpoint_step_polygon_requires_explicit_source_dates() -> None:
+    fig, ax = plt.subplots()
+    try:
+        dates = pd.date_range("2024-01-01", periods=4)
+        ax.fill_between(dates, [1.0, 2.0, 1.0, 2.0], 0.0, step="mid")
+
+        with pytest.raises(gs.DateDiscoveryError, match=r"step='mid'.*dates\(ax, data="):
             gs.dates(ax)
 
-        handle = gs.dates(ax, data=dates).collapse()
+        handle = gs.dates(ax, data=dates)
         assert list(handle.observations) == list(dates)
+    finally:
+        plt.close(fig)
+
+
+@pytest.mark.parametrize("step", ["pre", "post"])
+def test_endpoint_step_polygons_discover_source_dates(step: str) -> None:
+    fig, ax = plt.subplots()
+    try:
+        dates = pd.date_range("2024-01-01", periods=4)
+        ax.fill_between(dates, [1.0, 2.0, 1.0, 2.0], 0.0, step=step)
+
+        handle = gs.dates(ax)
+
+        assert list(handle.observations) == list(dates)
+    finally:
+        plt.close(fig)
+
+
+def test_fill_betweenx_is_rejected_on_an_x_date_handle() -> None:
+    fig, ax = plt.subplots()
+    try:
+        dates = pd.date_range("2024-01-01", periods=3)
+        ax.fill_betweenx(dates, [1.0, 2.0, 1.0], 0.0)
+
+        with pytest.raises(gs.DateDiscoveryError, match="fill_betweenx"):
+            gs.dates(ax, data=dates)
+    finally:
+        plt.close(fig)
+
+
+def test_polygon_with_non_data_transform_is_rejected() -> None:
+    fig, ax = plt.subplots()
+    try:
+        dates = pd.date_range("2024-01-01", periods=3)
+        ax.fill_between(dates, [1.0, 2.0, 1.0], 0.0)
+        handle = gs.dates(ax).collapse()
+        revision = handle.revision
+        observations = handle.observations.copy()
+        later = pd.date_range("2024-02-01", periods=3)
+        collection = ax.fill_between(later, [2.0, 1.0, 2.0], 0.0)
+        collection.set_transform(ax.transAxes)
+
+        with pytest.raises(gs.DateDiscoveryError, match=r"not use ax\.transData"):
+            handle.refresh()
+
+        assert handle.revision == revision
+        assert handle.observations.equals(observations)
+        assert ax.get_xscale() == "ggstyle-collapsed-date"
     finally:
         plt.close(fig)
 

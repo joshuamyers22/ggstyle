@@ -15,12 +15,16 @@ passes its result to matplotlib artists or limits continues to work, while code 
 asserted observation ordinals should instead inspect the axis scale transform. This is a
 deliberate pre-1.0 migration to avoid double-transforming native matplotlib operations.
 
-Observation provenance is now held by an owned, revisioned registry. Lines and scatter
-collections are discovered automatically, explicit dates remain sticky, and removed or
-mutated artists are reflected by :meth:`ggstyle.DateAxis.refresh`. Synchronized handles
-share one live registry, so refreshing any member transactionally updates every member
-without changing their date-number view limits. Polygon-only charts still require
-explicit ``data=`` until polygon provenance lands.
+Observation provenance is now held by an owned, revisioned registry. Lines, scatter
+collections, and native ``fill_between`` polygons are discovered automatically; explicit
+dates remain sticky, and removed or mutated artists are reflected by
+:meth:`ggstyle.DateAxis.refresh`. Synchronized handles share one live registry, so
+refreshing any member transactionally updates every member without changing their
+date-number view limits. Polygon discovery supports masks, NaNs, ``where`` regions,
+interpolated crossings, and multiple paths without changing vertices or path codes.
+Midpoint-stepped polygons require explicit ``data=`` because Matplotlib does not retain
+their complete source x sequence. ``fill_betweenx`` and non-data polygon transforms are
+rejected on an x-date handle.
 
 :meth:`ggstyle.DateAxis.dispose` disconnects callbacks and weak registry ownership while
 leaving Matplotlib artists in place. Failed timezone, formatter, caption, discovery, and

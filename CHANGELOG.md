@@ -12,8 +12,12 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Make `DateAxis.loc()` return the same native matplotlib date coordinate in both modes;
   ordinal display positions now belong exclusively to the axis transform.
 - Correct collapsed-mode guidance: native `scatter` and `fill_between` collections are
-  supported by the registered scale; lines and scatter offsets now contribute observation
-  provenance, while polygon-only plots require explicit `data=` until PR6.
+  supported by the registered scale; lines, scatter offsets, and native fill-between paths
+  now contribute observation provenance.
+- Discover multi-path `fill_between` observations across masks, NaNs, `where` regions,
+  and interpolated crossings without mutating vertices or path codes. Require explicit
+  source dates for unrecoverable midpoint steps, and reject `fill_betweenx`, custom
+  polygon transforms, and unrecognized polygon collections.
 - Add a public transactional `refresh()` lifecycle backed by an owned revisioned registry,
   and make `sync_dates()` share that registry across weakly held live handles.
 - Add idempotent `dispose()`, filterable `DateDiscoveryError` diagnostics, and rollback for

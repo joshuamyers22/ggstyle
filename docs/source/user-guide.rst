@@ -36,11 +36,12 @@ Collapsed axes
 
 Call :meth:`ggstyle.DateAxis.collapse` to remove unobserved gaps and
 :meth:`ggstyle.DateAxis.expand` to restore calendar spacing. The observations come from
-plotted lines, scatter offsets, and any explicit ``data=`` passed to
-:func:`ggstyle.dates`. Lines, ``scatter``, ``fill_between``, and native data-space
-annotations all pass through the same scale without having their geometry rewritten. A
-``fill_between``-only plot must still pass its dates explicitly through ``data=`` until
-polygon provenance lands.
+plotted lines, scatter offsets, native ``fill_between`` polygons, and any explicit
+``data=`` passed to :func:`ggstyle.dates`. Lines, ``scatter``, ``fill_between``, and
+native data-space annotations all pass through the same scale without having their
+geometry rewritten. Midpoint-stepped polygons are the exception: Matplotlib retains
+their generated midpoints instead of all source x values, so
+``fill_between(..., step="mid")`` requires the complete dates through ``data=``.
 
 Annotations
 -----------

@@ -217,9 +217,10 @@ from the Matplotlib axes.
 ## Known limits
 
 - Collapsed mode supports lines, `scatter`, `fill_between`, and native data-space or
-  x-data blended transforms without rewriting their geometry. Lines and scatter
-  collections contribute observations automatically. A `fill_between`-only chart still
-  needs `gs.dates(ax, data=dates)` until polygon provenance lands in PR6.
+  x-data blended transforms without rewriting their geometry. Lines, scatter collections,
+  and native `fill_between` polygons contribute observations automatically. Because
+  Matplotlib does not retain the source x array for `step="mid"`, that form still requires
+  the complete dates through `gs.dates(ax, data=dates)`.
 - Data artists with custom x transforms are rejected during refresh; use `ax.transData`
   or provide the complete observation registry explicitly.
 - `.tz()` assumes naive data is UTC when converting for display.

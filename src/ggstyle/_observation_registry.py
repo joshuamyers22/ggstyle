@@ -6,10 +6,12 @@ from dataclasses import dataclass
 from typing import Any
 from weakref import WeakKeyDictionary, WeakSet
 
+import matplotlib.collections as mcollections
 import numpy as np
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
-from matplotlib.collections import PathCollection
+from matplotlib.collections import PathCollection, PolyCollection
+from matplotlib.path import Path
 
 from . import _axis_data
 
@@ -106,13 +108,6 @@ class ObservationRegistry:
             batches = [explicit.numbers]
             batches.extend(values for _, values in discovery.artist_values)
             local = _union(batches)
-            unsupported = _collection_only_source(handle.ax, handle._managed_artists())
-            if local.size == 0 and unsupported is not None:
-                raise DateDiscoveryError(
-                    f"cannot discover observation dates from "
-                    f"{type(unsupported).__name__}; pass the complete dates through "
-                    "dates(ax, data=...) before collapsing this collection-only axes"
-                )
             local_state = _axis_data.AxisData(
                 local,
                 explicit.missing_values,
@@ -172,7 +167,7 @@ def _discover(
     managed: set[Artist],
     explicit_numbers: np.ndarray,
 ) -> _Discovery:
-    """Discover line and scatter observations owned by one axes."""
+    """Discover supported artist observations owned by one axes."""
     contributions: list[tuple[Artist, np.ndarray]] = []
 
     for line in ax.lines:
@@ -204,35 +199,137 @@ def _discover(
     for collection in ax.collections:
         if collection in managed:
             continue
-        if not isinstance(collection, PathCollection):
+        if isinstance(collection, PathCollection):
+            offsets = np.ma.asarray(collection.get_offsets(), dtype=float)
+            if offsets.size == 0:
+                continue
+            if collection.get_offset_transform() is not ax.transData:
+                if _axis_data.has_date_converter(ax):
+                    raise DateDiscoveryError(
+                        f"cannot refresh {type(collection).__name__} on this date "
+                        "axis: its offsets do not use ax.transData; use a data-space "
+                        "transform or supply complete observations through "
+                        "dates(ax, data=...)"
+                    )
+                continue
+            numbers, _ = _finite_unmasked(offsets[:, 0])
+            if numbers.size:
+                contributions.append((collection, numbers))
             continue
-        offsets = np.ma.asarray(collection.get_offsets(), dtype=float)
-        if offsets.size == 0:
+
+        if isinstance(collection, PolyCollection):
+            numbers = _polygon_observations(ax, collection, explicit_numbers)
+            if numbers.size:
+                contributions.append((collection, numbers))
             continue
-        if collection.get_offset_transform() is not ax.transData:
-            if _axis_data.has_date_converter(ax):
-                raise DateDiscoveryError(
-                    f"cannot refresh {type(collection).__name__} on this date axis: "
-                    "its offsets do not use ax.transData; use a data-space transform "
-                    "or supply complete observations through dates(ax, data=...)"
-                )
-            continue
-        numbers, _ = _finite_unmasked(offsets[:, 0])
-        if numbers.size:
-            contributions.append((collection, numbers))
+
+        if (
+            _axis_data.has_date_converter(ax)
+            and collection.get_transform() is ax.transData
+            and collection.get_paths()
+        ):
+            raise DateDiscoveryError(
+                f"cannot discover observation dates from "
+                f"{type(collection).__name__}; pass the complete dates through "
+                "dates(ax, data=...) or remove the unsupported collection"
+            )
 
     return _Discovery(tuple(contributions))
 
 
-def _collection_only_source(ax: Axes, managed: set[Artist]) -> Artist | None:
-    if not _axis_data.has_date_converter(ax):
-        return None
-    for collection in ax.collections:
-        if collection in managed or isinstance(collection, PathCollection):
-            continue
-        if collection.get_transform() is ax.transData and collection.get_paths():
-            return collection
-    return None
+def _polygon_observations(
+    ax: Axes,
+    collection: PolyCollection,
+    explicit_numbers: np.ndarray,
+) -> np.ndarray:
+    """Recover source x vertices from a native fill-between collection."""
+    direction = getattr(collection, "t_direction", None)
+    if direction == "y" or (
+        direction is None and _axis_data.axis_has_date_converter(ax.yaxis)
+    ):
+        raise DateDiscoveryError(
+            "fill_betweenx is unsupported on an x-date handle because its dates "
+            "belong to the y axis"
+        )
+
+    paths = collection.get_paths()
+    if not paths:
+        return _immutable(np.empty(0, dtype=float))
+    if collection.get_transform() is not ax.transData:
+        raise DateDiscoveryError(
+            f"cannot refresh {type(collection).__name__} on this date axis: its "
+            "vertices do not use ax.transData; use a data-space transform"
+        )
+
+    fill_between_type = getattr(mcollections, "FillBetweenPolyCollection", None)
+    if fill_between_type is not None and not isinstance(collection, fill_between_type):
+        raise DateDiscoveryError(
+            f"cannot discover observation dates from {type(collection).__name__}; "
+            "only native fill_between polygon collections are supported"
+        )
+
+    batches: list[np.ndarray] = []
+    for path in paths:
+        try:
+            source = _fill_between_source_x(path)
+        except ValueError as error:
+            if explicit_numbers.size:
+                return _immutable(np.empty(0, dtype=float))
+            raise DateDiscoveryError(
+                "cannot recover fill_between observation dates from its polygon "
+                "topology; pass the complete dates through dates(ax, data=...)"
+            ) from error
+        if _looks_like_midpoint_step(source):
+            return _explicit_or_raise_midpoint_step(explicit_numbers)
+        numbers, _ = _finite_unmasked(np.ma.asarray(source, dtype=float))
+        if numbers.size:
+            batches.append(numbers)
+    return _union(batches)
+
+
+def _fill_between_source_x(path: Path) -> np.ndarray:
+    """Return one path's source-side x sequence, excluding synthetic endpoints."""
+    vertices = np.asarray(path.vertices, dtype=float)
+    raw_codes = path.codes
+    if vertices.ndim != 2 or vertices.shape[1] != 2:
+        raise ValueError("polygon vertices are not a two-column array")
+    if raw_codes is None:
+        raise ValueError("polygon has no matching path codes")
+    codes = np.asarray(raw_codes, dtype=np.uint8)
+    if len(codes) != len(vertices):
+        raise ValueError("polygon has no matching path codes")
+    if len(vertices) < 5 or codes[0] != Path.MOVETO or codes[-1] != Path.CLOSEPOLY:
+        raise ValueError("polygon is not a closed fill_between path")
+
+    body = vertices[:-1]
+    if (len(body) - 2) % 2:
+        raise ValueError("polygon sides have unequal lengths")
+    side_length = (len(body) - 2) // 2
+    if side_length < 1:
+        raise ValueError("polygon has no source vertices")
+    source = body[1 : side_length + 1, 0]
+    reverse_side = body[side_length + 2 :, 0]
+    if not np.array_equal(source, reverse_side[::-1], equal_nan=True):
+        raise ValueError("polygon sides do not share a fill_between x sequence")
+    return source
+
+
+def _looks_like_midpoint_step(values: np.ndarray) -> bool:
+    """Recognize the unrecoverable midpoint-step topology used before Matplotlib 3.9."""
+    if len(values) < 4 or len(values) % 2:
+        return False
+    interior = values[1:-1]
+    return bool(np.all(interior[::2] == interior[1::2]))
+
+
+def _explicit_or_raise_midpoint_step(explicit_numbers: np.ndarray) -> np.ndarray:
+    if explicit_numbers.size:
+        return _immutable(np.empty(0, dtype=float))
+    raise DateDiscoveryError(
+        "cannot recover original dates from fill_between(step='mid') because "
+        "Matplotlib retains midpoint vertices instead; pass the complete dates "
+        "through dates(ax, data=...)"
+    )
 
 
 def _finite_unmasked(values: np.ma.MaskedArray) -> tuple[np.ndarray, int]:

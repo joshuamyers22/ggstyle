@@ -190,8 +190,14 @@ regression coverage—not as geometry-mutation adapters.
 
 PR5 implements the owned revisioned registry, line and scatter provenance, live
 synchronization, transactional refresh rollback, and weak disposal semantics described
-above. Polygon provenance remains the PR6 discovery increment; until then, a polygon-only
-axes must provide its complete observations explicitly.
+above. PR6 adds native `fill_between` provenance without mutating geometry. The isolated
+decoder uses public paths and codes to select the mirrored source-side x vertices from
+every polygon path; it excludes closing endpoints and interpolation crossings. Modern
+Matplotlib identifies these artists as `FillBetweenPolyCollection`, while supported older
+versions expose the same topology as `PolyCollection`, so both environments are tested.
+Midpoint-stepped paths cannot reproduce their omitted interior source dates and therefore
+require complete explicit `data=`. `fill_betweenx`, unrecognized polygons, and non-data
+transforms fail preflight.
 
 ## Rejected alternative
 

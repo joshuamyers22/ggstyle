@@ -99,6 +99,36 @@ def annotation_modes() -> Figure:
     return figure
 
 
+def fill_between_modes() -> Figure:
+    """Build expanded and collapsed interval bands with an internal gap."""
+    figure, axes = _new_subplots(1, 2, height=2.6)
+    values = _VALUES.copy()
+    values[2] = np.nan
+    for index, ax in enumerate(axes[0]):
+        collection = ax.fill_between(
+            _DATES,
+            values - 0.35,
+            values + 0.35,
+            color=_COLORS[0],
+            alpha=0.25,
+        )
+        ax.plot(_DATES, values, marker="o", color=_COLORS[0])
+        vertices = [path.vertices.copy() for path in collection.get_paths()]
+        codes = [path.codes.copy() for path in collection.get_paths()]
+        title = "Band — collapsed" if index else "Band — expanded"
+        handle = _configure_date_axis(ax, title, _DATES[[0, 2, 4]])
+        if index:
+            handle.collapse()
+
+        assert len(collection.get_paths()) == 2
+        for path, expected_vertices, expected_codes in zip(
+            collection.get_paths(), vertices, codes, strict=True
+        ):
+            assert np.array_equal(path.vertices, expected_vertices)
+            assert np.array_equal(path.codes, expected_codes)
+    return figure
+
+
 def synchronized_panels() -> Figure:
     """Build synchronized panels with distinct observation sets."""
     figure, axes = _new_subplots(2, 1, height=4.4)
@@ -151,6 +181,7 @@ def theme_gallery() -> Figure:
 CASES: dict[str, FigureBuilder] = {
     "line_modes": line_modes,
     "annotation_modes": annotation_modes,
+    "fill_between_modes": fill_between_modes,
     "synchronized_panels": synchronized_panels,
     "theme_gallery": theme_gallery,
 }

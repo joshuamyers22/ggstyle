@@ -8,6 +8,7 @@ from typing import Any, Literal
 import matplotlib.dates as mdates
 import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.axis import Axis
 
 from ._frames import to_datetime_index
 
@@ -117,7 +118,11 @@ def validate(ax: Axes, data: AxisData) -> None:
 
 def has_date_converter(ax: Axes) -> bool:
     """Return whether Matplotlib installed a date converter on the x-axis."""
-    axis = ax.xaxis
+    return axis_has_date_converter(ax.xaxis)
+
+
+def axis_has_date_converter(axis: Axis) -> bool:
+    """Return whether Matplotlib installed a date converter on an axis."""
     getter = getattr(axis, "get_converter", None)
     converter = getter() if getter is not None else getattr(axis, "converter", None)
     if converter is None:
