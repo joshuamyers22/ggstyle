@@ -4,6 +4,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.4.0 - 2026-09-15
+
 - Select a function-first, transactional architecture for the v0.4 publication-finishing
   API and add ten machine-checked usability fixtures spanning five target-user
   perspectives. The fixture gate preserves native Matplotlib access and requires at least
@@ -26,6 +28,9 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Add transactional line endpoint labels with display-space collision avoidance,
   line-colour matching, constrained-layout right margins, managed annotation reuse, and
   an explicit whole-plot legend-or-raise fallback for unsupported artists or geometry.
+- Add strict-JSON inspection for dry-run finishing plans and date-axis summaries, an
+  executable publication gallery, task-oriented migration and tool-selection guidance,
+  link-checked documentation, and GitHub Pages deployment.
 
 ## 0.3.0 - 2026-09-15
 

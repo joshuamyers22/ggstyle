@@ -1,10 +1,9 @@
 """ggstyle -- a ggplot2-flavoured plotting layer for Python.
 
-v0.3 makes collapsed date coordinates safe for native lines, scatter collections,
-and fill-between polygons. The development API also provides transactional plot labels,
-pure numeric labellers, accessible palettes, publication-safe figure export, and explicit
-Matplotlib adapters, including collision-aware direct labels for native lines. No
-``line()`` helper exists yet.
+v0.4 combines production-safe collapsed date coordinates with transactional plot labels,
+pure numeric labellers, accessible palettes, parameterized themes, collision-aware direct
+labels, inspectable plans, and publication-safe figure export. No ``line()`` helper or
+general grammar compiler exists.
 
     import matplotlib.pyplot as plt
     import ggstyle as gs

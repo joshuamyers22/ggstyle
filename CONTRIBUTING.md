@@ -14,7 +14,10 @@ python -m venv .venv
 .venv/bin/ruff check .
 .venv/bin/mypy
 .venv/bin/python tools/validate_docstrings.py
+.venv/bin/python tools/validate_gallery.py
 .venv/bin/python -m sphinx -W --keep-going -b html docs/source docs/build/html
+.venv/bin/python -m sphinx -W -b doctest docs/source docs/build/doctest
+.venv/bin/python -m sphinx -W -b linkcheck docs/source docs/build/linkcheck
 ```
 
 Public functions, classes, methods, and attributes use the NumPy docstring standard, as
@@ -58,7 +61,11 @@ on PyPI with these values:
 - Workflow: ``publish.yml``
 - Environment: ``pypi``
 
+Before a v0.4.0 tag, record at least five uncoached pilot sessions using the protocol in
+the usability-evidence documentation. This human approval is required in addition to the
+automated fixture, compatibility, gallery, documentation, package, and visual gates.
+
 After the release commit passes CI, create and push a tag matching the package version,
-for example ``v0.3.0``. The publish workflow independently repeats the test, type,
+for example ``v0.4.0``. The publish workflow independently repeats the test, type,
 documentation, and package checks; publishes the distributions to PyPI; and creates the
 GitHub release only after publication succeeds.

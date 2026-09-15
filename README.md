@@ -1,13 +1,12 @@
 # ggstyle
 
-A date axis for matplotlib that is easy to use and easy to manipulate.
+Publication finishing and safe date axes for Matplotlib.
 
-**v0.3 adds production-safe collapsed coordinates for native lines, scatter points, and
-fill-between bands.** It also includes the complete built-in ggplot2-inspired theme set.
-The current development API adds transactional plot finishing, theme recipes, pure
-numeric labellers, immutable qualitative/continuous palettes, and publication-safe
-figure export, including collision-aware direct labels for native lines. There is no
-`line()` helper yet; native Matplotlib plotting remains the intended path.
+**v0.4 adds a production publication-finishing kit to the safe date axis:** transactional
+labels, pure numeric labellers, immutable qualitative/continuous palettes, parameterized
+themes, collision-aware direct labels, inspectable dry runs, and deterministic figure
+export. Native Matplotlib plotting remains the intended path; there is no `line()` helper
+or general grammar compiler.
 
 The date-axis behavior is tested, but the project is still young and follows semantic
 versioning. See the [known limits](#known-limits) before using collapsed mode in
@@ -79,6 +78,14 @@ in place, and `False` removes them. Use `dry_run=True` to validate and inspect t
 operation without mutation. `finish()` never edits data artists or global `rcParams`.
 When a theme is supplied, its diagnostic reports settings such as colour cycles and
 figure size that can only be applied safely before artists or figures are created.
+
+Inspect the complete validated request without drawing or mutation:
+
+```python
+plan = gs.finish(ax, title="Revenue", theme="minimal", dry_run=True)
+payload = plan.as_dict()  # strict JSON-compatible plain values
+print(plan.describe())    # stable formatted JSON
+```
 
 Replace a multi-series line legend with labels at the final visible data points:
 
@@ -357,7 +364,7 @@ from the Matplotlib axes.
 - Data artists with custom x transforms are rejected during refresh; use `ax.transData`
   because explicit dates cannot make a non-data transform safe.
 - Unsupported or ambiguous date-bearing artists raise `DateDiscoveryError` during
-  preflight. Version 0.3 has no permissive warning mode.
+  preflight. Version 0.4 retains the strict policy and has no permissive warning mode.
 - `.tz()` assumes naive data is UTC when converting for display.
 - Palettes map normalized values and select colours; data-domain training, category
   assignment, legends, and colorbars remain ordinary Matplotlib work until semantic
@@ -377,6 +384,11 @@ mypy
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete development workflow and
 [SECURITY.md](SECURITY.md) for vulnerability reporting.
+
+The executable publication and nine-theme figures are in the
+[documentation gallery](docs/source/gallery.rst); regenerate their reviewed assets with
+`python tools/validate_gallery.py --write`. The complete HTML documentation is published
+through [GitHub Pages](https://joshuamyers22.github.io/ggstyle/).
 
 The structured documentation follows the same user-guide, API-reference, pitfalls, and
 release-note separation used by statsmodels. Build it locally with:

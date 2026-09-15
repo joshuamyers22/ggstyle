@@ -93,6 +93,12 @@ The implementation PRs will introduce models only when they have behavior:
 return types for downstream type checkers. An arbitrary boolean should not erase the
 return type to `Any`.
 
+`FinishPlan.as_dict()` is the stable inspection boundary for logs and strict JSON;
+`describe()` formats that same payload deterministically. Nested theme, axis-labeller,
+and endpoint-label policy is reduced to plain values, never live artists or callables.
+This inspection form is deliberately not a round-trip recipe schema; reusable recipe
+serialization remains deferred to v0.7.
+
 Mutable inputs such as override mappings and metadata are defensively copied into
 immutable representations. Reusing a spec across figures cannot leak state.
 

@@ -25,7 +25,7 @@ jobs:
           cache: pip
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --all-extras
-      - run: uv run pytest -q --cov=ggstyle --cov-report=term-missing
+      - run: uv run python -m pytest -q --cov=ggstyle --cov-report=term-missing
       - run: uv run ruff check .
       - run: uv run mypy
       - run: uv run python tools/finishing_usability.py
@@ -45,7 +45,7 @@ jobs:
           cache: pip
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --all-extras
-      - run: uv run pytest -q
+      - run: uv run python -m pytest -q
 
   dependencies:
     name: dependencies (${{ matrix.profile }})
@@ -70,7 +70,7 @@ jobs:
       - run: uv venv --python ${{ matrix.python-version }}
       - run: uv pip install --constraint ${{ matrix.constraints }} -e ".[dev]"
       - run: uv run --no-sync python tools/report_environment.py
-      - run: uv run --no-sync pytest -q
+      - run: uv run --no-sync python -m pytest -q
       - run: uv run --no-sync python tools/benchmark_registry.py
 
   prerelease:
@@ -87,7 +87,7 @@ jobs:
       - run: uv venv --python 3.13
       - run: uv pip install --prerelease allow --upgrade -e ".[dev]"
       - run: uv run --no-sync python tools/report_environment.py
-      - run: uv run --no-sync pytest -q
+      - run: uv run --no-sync python -m pytest -q
 
   visual:
     runs-on: ubuntu-24.04
@@ -105,7 +105,7 @@ jobs:
           cache: pip
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --group visual
-      - run: uv run --frozen --group visual pytest -q tests/test_visual_regressions.py
+      - run: uv run --frozen --group visual python -m pytest -q tests/test_visual_regressions.py
       - name: Upload visual differences
         if: failure()
         uses: actions/upload-artifact@v6
@@ -154,5 +154,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --frozen --all-extras
       - run: uv run python tools/validate_docstrings.py
+      - run: MPLBACKEND=Agg uv run python tools/validate_gallery.py
       - run: uv run sphinx-build -W --keep-going -b html docs/source docs/build/html
       - run: MPLBACKEND=Agg uv run sphinx-build -W -b doctest docs/source docs/build/doctest
+      - run: uv run sphinx-build -W -b linkcheck docs/source docs/build/linkcheck

@@ -45,6 +45,10 @@ or changing axes, artists, layout, or global ``rcParams``. Commit failures resto
 text, formatters, managed artists, and layout state. Data artist coordinates, transforms,
 labels, and colours are never changed.
 
+Use :meth:`ggstyle.FinishPlan.as_dict` for a fresh JSON-compatible representation or
+:meth:`ggstyle.FinishPlan.describe` for deterministic formatted JSON. Both include nested
+policy and diagnostics without retaining artists or callables; see :doc:`inspection`.
+
 The coordinator also accepts a theme recipe; see :ref:`parameterized-themes` for the
 existing-axes safety boundary. Saving is deliberately separate through
 :func:`ggstyle.save`. Endpoint labels are an explicit finishing policy rather than

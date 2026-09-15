@@ -26,8 +26,10 @@ jobs:
       - run: python -m ruff check .
       - run: python -m mypy
       - run: python tools/validate_docstrings.py
+      - run: MPLBACKEND=Agg python tools/validate_gallery.py
       - run: python -m sphinx -W --keep-going -b html docs/source docs/build/html
       - run: MPLBACKEND=Agg python -m sphinx -W -b doctest docs/source docs/build/doctest
+      - run: python -m sphinx -W -b linkcheck docs/source docs/build/linkcheck
 
   build:
     runs-on: ubuntu-latest

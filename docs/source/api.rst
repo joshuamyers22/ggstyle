@@ -15,6 +15,7 @@ Plot finishing
 .. autoclass:: ggstyle.AxisSpec
 
 .. autoclass:: ggstyle.FinishPlan
+   :members: as_dict, describe
 
 .. autoclass:: ggstyle.FinishResult
    :members:
@@ -37,7 +38,7 @@ Date axes
    :members:
 
 .. autoclass:: ggstyle.AxisSummary
-   :members:
+   :members: as_dict, describe
 
 .. autoexception:: ggstyle.DateDiscoveryError
 

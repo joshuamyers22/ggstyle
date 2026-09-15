@@ -30,7 +30,9 @@ def check_date_axis_types(ax: Axes, events: pd.DataFrame) -> None:
     assert_type(handle.grid("monthly"), gs.DateAxis)
     assert_type(handle.clear_annotations(), gs.DateAxis)
     assert_type(handle.refresh(), gs.DateAxis)
-    assert_type(handle.summary(), gs.AxisSummary)
+    summary = assert_type(handle.summary(), gs.AxisSummary)
+    assert_type(summary.as_dict(), dict[str, object])
+    assert_type(summary.describe(), str)
     assert_type(handle.observations, pd.DatetimeIndex)
     assert_type(gs.sync_dates([ax]), list[gs.DateAxis])
 
@@ -83,7 +85,9 @@ def check_finish_types(ax: Axes, dry_run: bool) -> None:
     assert_type(result.axes, Axes)
     assert_type(result.artists, tuple[Artist, ...])
     assert_type(result.plan, gs.FinishPlan)
-    assert_type(gs.finish(ax, dry_run=True), gs.FinishPlan)
+    plan = assert_type(gs.finish(ax, dry_run=True), gs.FinishPlan)
+    assert_type(plan.as_dict(), dict[str, object])
+    assert_type(plan.describe(), str)
     assert_type(gs.finish(ax, dry_run=dry_run), gs.FinishPlan | gs.FinishResult)
 
 

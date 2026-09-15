@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ggstyle"
-version = "0.3.0"
-description = "A date axis for matplotlib that is easy to use and manipulate"
+version = "0.4.0"
+description = "Publication finishing and safe date axes for Matplotlib"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -31,6 +31,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/joshuamyers22/ggstyle"
+Documentation = "https://joshuamyers22.github.io/ggstyle/"
 Repository = "https://github.com/joshuamyers22/ggstyle"
 Issues = "https://github.com/joshuamyers22/ggstyle/issues"
 Changelog = "https://github.com/joshuamyers22/ggstyle/blob/main/CHANGELOG.md"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import weakref
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from types import MappingProxyType
 from typing import Any, Literal, cast, overload
 
@@ -18,6 +18,7 @@ from matplotlib.lines import Line2D
 from matplotlib.text import Annotation, Text
 from matplotlib.transforms import ScaledTranslation, Transform
 
+from ._inspection import describe, json_safe
 from .end_labels import EndLabelSpec, _EndLabelPreparation, _prepare_end_labels
 from .formats import NumericLabeller
 from .formatters import as_formatter
@@ -108,6 +109,56 @@ def axis(*, title: str | None = None, labels: NumericLabeller | None = None) -> 
     return AxisSpec(title=title, labels=labels)
 
 
+def _labeller_description(labeller: NumericLabeller | None) -> object:
+    if labeller is None:
+        return None
+    labeller_type = type(labeller)
+    public_type = {
+        ("ggstyle.formats", "_NumberLabeller"): "number",
+        ("ggstyle.formats", "_SILabeller"): "si",
+    }.get(
+        (labeller_type.__module__, labeller_type.__name__),
+        f"{labeller_type.__module__}.{labeller_type.__qualname__}",
+    )
+    if not is_dataclass(labeller):
+        parameters: dict[str, object] = {}
+    else:
+        parameters = {
+            item.name: json_safe(getattr(labeller, item.name))
+            for item in fields(labeller)
+        }
+    return {"type": public_type, "parameters": parameters}
+
+
+def _axis_description(specification: AxisSpec | None) -> object:
+    if specification is None:
+        return None
+    return {
+        "title": specification.title,
+        "labels": _labeller_description(specification.labels),
+    }
+
+
+def _theme_description(specification: ThemeSpec | None) -> object:
+    if specification is None:
+        return None
+    return {
+        "name": specification.name,
+        "base_size": specification.base_size,
+        "base_family": specification.base_family,
+        "overrides": json_safe(specification.overrides),
+    }
+
+
+def _direct_label_description(specification: DirectLabels) -> object:
+    if not isinstance(specification, EndLabelSpec):
+        return specification
+    return {
+        "collision": specification.collision,
+        "fallback": specification.fallback,
+    }
+
+
 @dataclass(frozen=True)
 class FinishPlan:
     """
@@ -150,6 +201,43 @@ class FinishPlan:
     managed_changes: tuple[str, ...]
     layout_action: LayoutAction
     diagnostics: tuple[str, ...] = ()
+
+    def as_dict(self) -> dict[str, object]:
+        """
+        Return the complete finishing plan as JSON-compatible plain values.
+
+        The result contains no Matplotlib artists or Python callables. It is suitable
+        for logging, snapshot tests, and strict :func:`json.dumps` serialization.
+
+        Returns
+        -------
+        dict of str to object
+            Fresh nested values suitable for strict JSON serialization.
+        """
+        return {
+            "title": self.title,
+            "subtitle": self.subtitle,
+            "caption": self.caption,
+            "theme": _theme_description(self.theme),
+            "direct_labels": _direct_label_description(self.direct_labels),
+            "direct_label_action": self.direct_label_action,
+            "x": _axis_description(self.x),
+            "y": _axis_description(self.y),
+            "managed_changes": list(self.managed_changes),
+            "layout_action": self.layout_action,
+            "diagnostics": list(self.diagnostics),
+        }
+
+    def describe(self) -> str:
+        """
+        Return the complete finishing plan as deterministic formatted JSON.
+
+        Returns
+        -------
+        str
+            Strict JSON containing the same values as :meth:`as_dict`.
+        """
+        return describe(self.as_dict())
 
 
 @dataclass(frozen=True)

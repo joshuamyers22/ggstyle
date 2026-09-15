@@ -7,6 +7,8 @@ from numpydoc.validate import validate
 PUBLIC_OBJECTS = (
     "ggstyle._cadence.Cadence",
     "ggstyle.dates.AxisSummary",
+    "ggstyle.dates.AxisSummary.as_dict",
+    "ggstyle.dates.AxisSummary.describe",
     "ggstyle.dates.DateAxis",
     "ggstyle.dates.DateDiscoveryError",
     "ggstyle.dates.dates",
@@ -20,6 +22,8 @@ PUBLIC_OBJECTS = (
     "ggstyle.formats.label_si",
     "ggstyle.finish.AxisSpec",
     "ggstyle.finish.FinishPlan",
+    "ggstyle.finish.FinishPlan.as_dict",
+    "ggstyle.finish.FinishPlan.describe",
     "ggstyle.finish.FinishResult",
     "ggstyle.finish.axis",
     "ggstyle.finish.finish",

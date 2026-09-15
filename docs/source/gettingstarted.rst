@@ -54,6 +54,15 @@ Add the plot and axis labels as one validated operation:
 Matplotlib text artists. See :ref:`plot-finishing` for layout, replacement, and dry-run
 behavior.
 
+Preview the same validated operation without mutation and retain plain audit data:
+
+.. code-block:: python
+
+   plan = gs.finish(ax, title="Revenue", theme="minimal", dry_run=True)
+   print(plan.describe())
+
+See :doc:`inspection` for JSON-safe finishing plans and date-axis summaries.
+
 For several labelled lines, replace legend lookup with collision-aware endpoint labels:
 
 .. code-block:: python

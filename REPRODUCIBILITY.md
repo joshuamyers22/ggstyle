@@ -18,3 +18,9 @@ The pinned visual profile is separate because renderer updates require explicit 
 review. `make visual` verifies it. `python tools/benchmark_registry.py` guards against
 gross registry-complexity regressions, while the package CI job builds a wheel and runs
 `tools/smoke_wheel.py` from an isolated environment.
+
+The publication gallery is executable policy documentation rather than a pixel baseline.
+`python tools/validate_gallery.py` renders every published gallery builder into a
+temporary directory and validates its artifacts; `--write` is the explicit reviewed
+asset-update operation. Pixel-sensitive contracts remain in the separately pinned visual
+suite.

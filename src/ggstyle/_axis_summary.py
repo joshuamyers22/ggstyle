@@ -6,6 +6,7 @@ from typing import Literal
 import pandas as pd
 
 from ._date_summary import infer_frequency
+from ._inspection import describe
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,41 @@ class AxisSummary:
     minor_cadence: str | None
     timezone: str | None
     missing_values: int
+
+    def as_dict(self) -> dict[str, object]:
+        """
+        Return a JSON-compatible description of the resolved date-axis state.
+
+        Timestamp values use ISO 8601 text. The returned dictionary retains no
+        Matplotlib artists and may be passed directly to :func:`json.dumps`.
+
+        Returns
+        -------
+        dict of str to object
+            Fresh nested values suitable for strict JSON serialization.
+        """
+        return {
+            "mode": self.mode,
+            "observations": self.observations,
+            "start": self.start.isoformat() if self.start is not None else None,
+            "end": self.end.isoformat() if self.end is not None else None,
+            "inferred_frequency": self.inferred_frequency,
+            "major_cadence": self.major_cadence,
+            "minor_cadence": self.minor_cadence,
+            "timezone": self.timezone,
+            "missing_values": self.missing_values,
+        }
+
+    def describe(self) -> str:
+        """
+        Return the resolved date-axis state as deterministic formatted JSON.
+
+        Returns
+        -------
+        str
+            Strict JSON containing the same values as :meth:`as_dict`.
+        """
+        return describe(self.as_dict())
 
 
 def summarize_axis(

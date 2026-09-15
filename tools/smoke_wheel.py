@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import tempfile
 from pathlib import Path
 
@@ -55,6 +56,10 @@ def main() -> None:
         )
         if result.axes is not ax or not isinstance(result.plan, gs.FinishPlan):
             raise RuntimeError("installed wheel returned invalid finishing objects")
+        plan_payload = result.plan.as_dict()
+        json.dumps(plan_payload, allow_nan=False)
+        if json.loads(result.plan.describe()) != plan_payload:
+            raise RuntimeError("installed wheel produced inconsistent plan inspection")
         if len(result.artists) < 4:
             raise RuntimeError("installed wheel did not create every requested label")
         endpoint_labels = [item for item in ax.texts if item.get_text() == "Median"]
@@ -63,6 +68,10 @@ def main() -> None:
         handle = gs.dates(ax).ticks("daily").collapse()
         if not handle.observations.equals(dates):
             raise RuntimeError("installed wheel discovered incorrect observations")
+        summary_payload = handle.summary().as_dict()
+        json.dumps(summary_payload, allow_nan=False)
+        if json.loads(handle.summary().describe()) != summary_payload:
+            raise RuntimeError("installed wheel produced inconsistent axis inspection")
         with tempfile.TemporaryDirectory() as directory:
             image = Path(directory) / "smoke.png"
             saved = gs.save(

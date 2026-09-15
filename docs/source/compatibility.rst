@@ -1,7 +1,7 @@
 Compatibility contract
 ======================
 
-Version 0.3 supports Python 3.10 through 3.13, Matplotlib 3.7.5 or newer, pandas
+Version 0.4 supports Python 3.10 through 3.13, Matplotlib 3.7.5 or newer, pandas
 2.0 or newer, and NumPy 1.24 or newer. The reproducible floor job uses the final
 Matplotlib 3.7 patch release so the declared minimum includes that minor series' complete
 maintenance fixes.
@@ -44,8 +44,9 @@ Strict diagnostics
 ------------------
 
 Unsupported or ambiguous date-bearing artists raise
-:class:`ggstyle.DateDiscoveryError` during preflight. Version 0.3 deliberately has no
-permissive warning mode: a warning could leave a plausible-looking but incorrect plot.
+:class:`ggstyle.DateDiscoveryError` during preflight. Version 0.4 retains the strict
+policy and deliberately has no permissive warning mode: a warning could leave a
+plausible-looking but incorrect plot.
 Failure does not commit a registry revision or partially update synchronized axes.
 
 The following are explicit exclusions on an x-date handle:
@@ -79,3 +80,21 @@ Python 3.12 jobs on macOS and Windows, exact minimum and newest-stable dependenc
 and one pinned Ubuntu renderer for pixels. Prerelease dependency runs are scheduled and
 informational; stable supported releases are blocking. See ``REPRODUCIBILITY.md`` and the
 visual regression guide for exact pins and commands.
+
+Publication-finishing boundary
+-------------------------------
+
+Numeric labellers and palettes are pure Python policy. ``finish`` accepts ordinary
+rectilinear Matplotlib axes and changes only the explicitly requested non-data state.
+Existing-axes theming deliberately excludes creation-time properties such as property
+cycles, figure geometry, and line defaults; these limitations are returned in plan and
+result diagnostics.
+
+Direct endpoint labels support visible, public ``Line2D`` legend participants using the
+axes' data transform. Unsupported collections, custom transforms, endpoints outside the
+view, and insufficient vertical space follow the requested whole-plot legend-or-raise
+fallback policy. General text repulsion is not supported.
+
+``save`` uses Matplotlib's PNG, SVG, PDF, and other registered backends. Metadata keys
+remain backend-specific. The minimum-version profile verifies that empty metadata is not
+forwarded to older JPEG backends that reject the keyword itself.

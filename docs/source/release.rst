@@ -1,6 +1,39 @@
 Release notes
 =============
 
+0.4.0 (2026-09-15)
+------------------
+
+Version 0.4 adds a publication-finishing layer that adopts existing Matplotlib axes.
+:func:`ggstyle.finish` coordinates plot titles, layout-managed subtitles and captions,
+axis titles, numeric labellers, parameterized themes, and managed endpoint labels as one
+validated transaction. Dry runs return the same :class:`ggstyle.FinishPlan` retained by
+successful results; plans and date-axis summaries now expose deterministic, strict-JSON
+inspection without live artists or callables.
+
+Locale-independent percent, currency, grouped-number, and SI labellers install through
+ordinary ``FuncFormatter`` objects. Public qualitative, sequential, and diverging
+palettes provide immutable values, explicit missing and out-of-bounds policies, and
+colour-vision regression gates. Theme recipes add proportional base sizing, font-family
+selection, validated overrides, and a documented safe boundary for existing axes.
+
+Line-series endpoint labels match source colours, resolve vertical collisions in display
+space, reserve a constrained-layout right margin, and use a whole-plot legend-or-raise
+fallback when an artist or geometry is unsupported. Repeated requests reuse managed
+annotations, and commit failures restore prior labels, legends, themes, formatters, and
+layout state.
+
+:func:`ggstyle.save` adds explicit physical dimensions, deterministic SVG/PDF metadata,
+tight or standard bounds, transparency policy, atomic overwrite protection, and figure
+state restoration. The clean-wheel smoke test now covers finishing, direct labels,
+collapsed coordinates, and export.
+
+The documentation includes an executable finishing and theme gallery, inspection and
+migration guidance, an explicit tool-selection boundary, a human pilot protocol, link
+checking, and GitHub Pages deployment. Stable minimum and newest dependency profiles,
+the pinned visual renderer, typing tests against the wheel, and the full Python/platform
+matrix remain release-blocking.
+
 0.3.0 (2026-09-15)
 ------------------
 

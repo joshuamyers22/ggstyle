@@ -87,3 +87,28 @@ Native ``fill_between`` polygons are also discovered when their vertices use
 Raw numeric coordinates on an axes whose date converter was installed by another artist
 remain inherently ambiguous. Supply complete explicit ``data=`` whenever numeric values
 are intended to represent date numbers.
+
+Existing-axes themes
+--------------------
+
+An rcParams theme fully controls artists created inside its context. Applying a theme
+later through :func:`ggstyle.finish` changes only properties that are safely retroactive.
+It does not recolour data, replace the axes property cycle, resize the figure, or rewrite
+line defaults. Inspect ``result.diagnostics`` or a dry-run plan for the preserved
+creation-, data-, and output-time settings.
+
+Direct-label eligibility
+------------------------
+
+Endpoint labels use public legend participation, so labels beginning with an underscore
+are ignored. Every visible participant must be an ordinary data-transform ``Line2D`` on
+a rectilinear axes. A mixed line/scatter plot does not receive a misleading partial set:
+it falls back wholly to a legend by default or raises when ``fallback="raise"``.
+
+Figure export
+-------------
+
+:func:`ggstyle.save` refuses to overwrite by default and never creates parent
+directories. Tight bounds crop the nominal canvas around decorated content; use
+``bbox="standard"`` when exact raster dimensions are the contract. Metadata support is
+defined by the selected Matplotlib backend rather than normalized across formats.
