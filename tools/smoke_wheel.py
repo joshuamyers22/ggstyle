@@ -15,7 +15,7 @@ import ggstyle as gs
 
 
 def main() -> None:
-    """Render a collapsed polygon-only plot and validate packaged resources."""
+    """Render a collapsed plot with direct labels and validate packaged resources."""
     repository = Path(__file__).resolve().parents[1]
     installed = Path(gs.__file__).resolve()
     if installed.is_relative_to(repository / "src"):
@@ -43,18 +43,23 @@ def main() -> None:
     figure, ax = plt.subplots()
     try:
         ax.fill_between(dates, [1.0, 2.0, 1.5], [1.5, 2.5, 2.0])
+        line = ax.plot(dates, [1.25, 2.25, 1.75], label="Median")[0]
         result = gs.finish(
             ax,
             title="Installed wheel",
             subtitle="Layout-aware labels",
             caption="ggstyle smoke test",
             theme=report_theme,
+            direct_labels=gs.end_labels(),
             y=gs.axis(title="Value", labels=gs.label_number(decimals=1)),
         )
         if result.axes is not ax or not isinstance(result.plan, gs.FinishPlan):
             raise RuntimeError("installed wheel returned invalid finishing objects")
         if len(result.artists) < 4:
             raise RuntimeError("installed wheel did not create every requested label")
+        endpoint_labels = [item for item in ax.texts if item.get_text() == "Median"]
+        if len(endpoint_labels) != 1 or endpoint_labels[0].get_color() != line.get_color():
+            raise RuntimeError("installed wheel did not create the direct line label")
         handle = gs.dates(ax).ticks("daily").collapse()
         if not handle.observations.equals(dates):
             raise RuntimeError("installed wheel discovered incorrect observations")

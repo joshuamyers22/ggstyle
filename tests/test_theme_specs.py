@@ -167,7 +167,7 @@ def test_finish_applies_safe_theme_properties_without_restyling_data() -> None:
         assert not any(spine.get_visible() for spine in ax.spines.values())
         assert ax.title.get_fontsize() == 16
         assert ax.xaxis.label.get_fontsize() == 11
-        assert ax.title.get_fontfamily() == ["DejaVu Serif"]
+        assert tuple(ax.title.get_fontfamily()) == ("DejaVu Serif",)
         assert legend.get_frame_on() is False
         assert legend.get_title().get_fontsize() == pytest.approx(9.9)
         assert all(gridline.get_visible() for gridline in ax.get_xgridlines())
@@ -203,8 +203,8 @@ def test_finish_theme_styles_managed_text_without_mutating_global_params() -> No
         assert result.plan.theme is specification
         assert subtitle.get_fontsize() == 12
         assert caption.get_fontsize() == pytest.approx(10.8)
-        assert subtitle.get_fontfamily() == ["DejaVu Serif"]
-        assert caption.get_fontfamily() == ["DejaVu Serif"]
+        assert tuple(subtitle.get_fontfamily()) == ("DejaVu Serif",)
+        assert tuple(caption.get_fontfamily()) == ("DejaVu Serif",)
         assert subtitle.get_color() == "cyan"
         assert caption.get_color() == "cyan"
         assert matplotlib.rcParams == before

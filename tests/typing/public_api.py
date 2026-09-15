@@ -69,8 +69,15 @@ def check_finish_types(ax: Axes, dry_run: bool) -> None:
         gs.axis(title="Share", labels=gs.label_percent()), gs.AxisSpec
     )
     report_theme = gs.theme_spec("minimal", base_size=11)
+    endpoints = assert_type(gs.end_labels(), gs.EndLabelSpec)
     result = assert_type(
-        gs.finish(ax, title="Report", theme=report_theme, y=specification),
+        gs.finish(
+            ax,
+            title="Report",
+            theme=report_theme,
+            direct_labels=endpoints,
+            y=specification,
+        ),
         gs.FinishResult,
     )
     assert_type(result.axes, Axes)

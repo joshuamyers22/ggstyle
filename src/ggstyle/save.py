@@ -282,25 +282,19 @@ def save(
         try:
             figure.set_size_inches(*size_inches, forward=False)
             with mpl.rc_context({"svg.hashsalt": "ggstyle"}):
+                savefig_options: dict[str, Any] = {
+                    "dpi": resolved_dpi,
+                    "format": output_format,
+                    "transparent": transparent,
+                    "bbox_inches": "tight" if bbox == "tight" else None,
+                }
                 if bbox == "tight":
-                    figure.savefig(
-                        temporary,
-                        dpi=resolved_dpi,
-                        format=output_format,
-                        transparent=transparent,
-                        bbox_inches="tight",
-                        pad_inches=0.1,
-                        metadata=cast(Any, output_metadata or None),
-                    )
-                else:
-                    figure.savefig(
-                        temporary,
-                        dpi=resolved_dpi,
-                        format=output_format,
-                        transparent=transparent,
-                        bbox_inches=None,
-                        metadata=cast(Any, output_metadata or None),
-                    )
+                    savefig_options["pad_inches"] = 0.1
+                # Older Matplotlib JPEG backends reject the keyword itself, even when
+                # its value is None. Supply it only when a backend has metadata to use.
+                if output_metadata:
+                    savefig_options["metadata"] = output_metadata
+                figure.savefig(temporary, **savefig_options)
         finally:
             figure.set_size_inches(*original_size, forward=False)
 

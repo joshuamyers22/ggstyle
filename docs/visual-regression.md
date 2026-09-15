@@ -57,4 +57,5 @@ collapsed irregular lines, a fill-between band with an internal gap, date annota
 spans, synchronized panels with distinct observations, a gallery of all nine themes, and
 a layout-managed title, subtitle, and caption finished on an existing axes. Each
 collection baseline includes its own geometry assertions rather than relying on pixels
-alone.
+alone. The direct-endpoint-label baseline additionally protects deterministic vertical
+collision resolution, line-colour matching, legend removal, and right-margin allocation.

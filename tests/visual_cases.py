@@ -198,6 +198,46 @@ def finished_labels() -> Figure:
     return figure
 
 
+def direct_endpoint_labels() -> Figure:
+    """Build closely spaced line endpoints with resolved direct labels."""
+    figure, ax = plt.subplots(figsize=(5.6, 3.2), dpi=100)
+    x = np.arange(6)
+    series = (
+        ("North", [1.0, 1.5, 1.8, 2.2, 2.7, 3.04]),
+        ("Central", [1.3, 1.7, 2.0, 2.4, 2.8, 3.00]),
+        ("South", [0.8, 1.2, 1.7, 2.1, 2.6, 2.96]),
+    )
+    for label, values in series:
+        ax.plot(x, values, marker="o", label=label)
+
+    result = gs.finish(
+        ax,
+        title="Regional revenue",
+        theme="test",
+        direct_labels=gs.end_labels(),
+        x=gs.axis(title="Period"),
+        y=gs.axis(title="USD millions"),
+    )
+    figure.canvas.draw()
+
+    assert result.plan.direct_label_action == "labels"
+    assert ax.get_legend() is None
+    assert [item.get_text() for item in ax.texts] == [
+        "North",
+        "Central",
+        "South",
+    ]
+    renderer = figure.canvas.get_renderer()
+    bounds = [item.get_window_extent(renderer) for item in ax.texts]
+    assert all(
+        not left.overlaps(right)
+        for index, left in enumerate(bounds)
+        for right in bounds[index + 1 :]
+    )
+    assert max(item.x1 for item in bounds) <= figure.bbox.x1
+    return figure
+
+
 CASES: dict[str, FigureBuilder] = {
     "line_modes": line_modes,
     "annotation_modes": annotation_modes,
@@ -205,6 +245,7 @@ CASES: dict[str, FigureBuilder] = {
     "synchronized_panels": synchronized_panels,
     "theme_gallery": theme_gallery,
     "finished_labels": finished_labels,
+    "direct_endpoint_labels": direct_endpoint_labels,
 }
 
 

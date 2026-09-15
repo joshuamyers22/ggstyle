@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import weakref
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Literal, cast, overload
 
@@ -13,9 +13,12 @@ from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.font_manager import FontProperties
-from matplotlib.text import Text
+from matplotlib.legend import Legend
+from matplotlib.lines import Line2D
+from matplotlib.text import Annotation, Text
 from matplotlib.transforms import ScaledTranslation, Transform
 
+from .end_labels import EndLabelSpec, _EndLabelPreparation, _prepare_end_labels
 from .formats import NumericLabeller
 from .formatters import as_formatter
 from .theme import (
@@ -29,7 +32,9 @@ from .theme import (
 __all__ = ["AxisSpec", "FinishPlan", "FinishResult", "axis", "finish"]
 
 ManagedText = str | Literal[False] | None
+DirectLabels = EndLabelSpec | Literal[False] | None
 LayoutAction = Literal["unchanged", "enable-constrained"]
+DirectLabelAction = Literal["unchanged", "remove", "labels", "legend"]
 HorizontalAlignment = Literal["left", "center", "right"]
 VerticalAlignment = Literal["bottom", "baseline", "center", "center_baseline", "top"]
 
@@ -118,6 +123,10 @@ class FinishPlan:
         Requested managed caption operation.
     theme : ThemeSpec or None
         Resolved theme requested for the existing axes.
+    direct_labels : EndLabelSpec, False, or None
+        Requested endpoint-label operation.
+    direct_label_action : {"unchanged", "remove", "labels", "legend"}
+        Resolved endpoint-label strategy.
     x : AxisSpec or None
         Requested x-axis changes.
     y : AxisSpec or None
@@ -134,6 +143,8 @@ class FinishPlan:
     subtitle: ManagedText
     caption: ManagedText
     theme: ThemeSpec | None
+    direct_labels: DirectLabels
+    direct_label_action: DirectLabelAction
     x: AxisSpec | None
     y: AxisSpec | None
     managed_changes: tuple[str, ...]
@@ -172,6 +183,7 @@ class _FinishState:
     caption: Text | None = None
     title_artist: Text | None = None
     title_base_transform: Transform | None = None
+    endpoint_labels: dict[Line2D, Annotation] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -188,6 +200,8 @@ class _TextSnapshot:
     color: Any
     clip_on: bool
     in_layout: bool
+    visible: bool
+    annotation_xy: tuple[float, float] | None
 
 
 _STATES: weakref.WeakKeyDictionary[Axes, _FinishState] = weakref.WeakKeyDictionary()
@@ -207,6 +221,12 @@ def _snapshot_text(artist: Text) -> _TextSnapshot:
         color=artist.get_color(),
         clip_on=artist.get_clip_on(),
         in_layout=artist.get_in_layout(),
+        visible=artist.get_visible(),
+        annotation_xy=(
+            cast(tuple[float, float], tuple(artist.xy))
+            if isinstance(artist, Annotation)
+            else None
+        ),
     )
 
 
@@ -224,6 +244,9 @@ def _restore_text(snapshot: _TextSnapshot) -> None:
     artist.set_color(snapshot.color)
     artist.set_clip_on(snapshot.clip_on)
     artist.set_in_layout(snapshot.in_layout)
+    artist.set_visible(snapshot.visible)
+    if isinstance(artist, Annotation) and snapshot.annotation_xy is not None:
+        artist.xy = snapshot.annotation_xy
 
 
 def _title_artists(ax: Axes) -> dict[str, Text]:
@@ -307,6 +330,7 @@ def _validate_request(
     subtitle: object,
     caption: object,
     theme: object,
+    direct_labels: object,
     x: object,
     y: object,
     dry_run: object,
@@ -324,6 +348,13 @@ def _validate_request(
         resolved_theme = theme_spec(theme)
     else:
         raise TypeError(f"theme must be a string, ThemeSpec, or None, got {theme!r}")
+    if direct_labels is not None and direct_labels is not False and not isinstance(
+        direct_labels, EndLabelSpec
+    ):
+        raise TypeError(
+            "direct_labels must be an EndLabelSpec, False, or None, "
+            f"got {direct_labels!r}"
+        )
     if x is not None and not isinstance(x, AxisSpec):
         raise TypeError(f"x must be an AxisSpec or None, got {x!r}")
     if y is not None and not isinstance(y, AxisSpec):
@@ -352,10 +383,12 @@ def _build_plan(
     subtitle: ManagedText,
     caption: ManagedText,
     theme: ThemeSpec | None,
+    direct_labels: DirectLabels,
     x: AxisSpec | None,
     y: AxisSpec | None,
-) -> FinishPlan:
+) -> tuple[FinishPlan, _EndLabelPreparation | None]:
     changes: list[str] = []
+    diagnostics: list[str] = []
     if theme is not None:
         changes.append("apply-theme")
     if title is not None:
@@ -370,12 +403,33 @@ def _build_plan(
     if caption is not None:
         changes.append("remove-caption" if caption is False else "set-caption")
 
+    direct_preparation: _EndLabelPreparation | None = None
+    direct_action: DirectLabelAction = "unchanged"
+    if direct_labels is False:
+        direct_action = "remove"
+        changes.append("remove-direct-labels")
+    elif isinstance(direct_labels, EndLabelSpec):
+        parameters = theme_params(theme) if theme is not None else MappingProxyType({})
+        direct_preparation = _prepare_end_labels(
+            ax,
+            direct_labels,
+            font_size=_font_size(cast(Any, _value(parameters, "legend.fontsize"))),
+        )
+        direct_action = direct_preparation.action
+        changes.append(
+            "set-direct-labels"
+            if direct_action == "labels"
+            else "fallback-direct-labels-to-legend"
+        )
+        diagnostics.extend(direct_preparation.diagnostics)
+
     state = _STATES.get(ax, _FinishState())
     has_outer_text = any(
         value is not None
         for value in (
             _resolved_outer_text(subtitle, state.subtitle, ax),
             _resolved_outer_text(caption, state.caption, ax),
+            "direct-labels" if direct_action == "labels" else None,
         )
     )
     layout_action: LayoutAction = (
@@ -383,17 +437,22 @@ def _build_plan(
         if has_outer_text and _root_figure(ax).get_layout_engine() is None
         else "unchanged"
     )
-    return FinishPlan(
+    if theme is not None:
+        diagnostics[:0] = _theme_diagnostics(theme)
+    plan = FinishPlan(
         title=title,
         subtitle=subtitle,
         caption=caption,
         theme=theme,
+        direct_labels=direct_labels,
+        direct_label_action=direct_action,
         x=x,
         y=y,
         managed_changes=tuple(changes),
         layout_action=layout_action,
-        diagnostics=_theme_diagnostics(theme) if theme is not None else (),
+        diagnostics=tuple(diagnostics),
     )
+    return plan, direct_preparation
 
 
 def _apply_managed_text(
@@ -441,13 +500,104 @@ def _remove_if_attached(artist: Text | None, ax: Axes) -> None:
         cast(Text, artist).remove()
 
 
-def _commit(ax: Axes, plan: FinishPlan) -> FinishResult:
+def _restore_legend(ax: Axes, previous: Legend | None, visible: bool | None) -> None:
+    current = ax.get_legend()
+    if current is not None and current is not previous:
+        current.remove()
+    if previous is None:
+        cast(Any, ax).legend_ = None
+        return
+    if previous.axes is None:
+        ax.add_artist(previous)
+    cast(Any, ax).legend_ = previous
+    assert visible is not None
+    previous.set_visible(visible)
+
+
+def _apply_end_labels(
+    ax: Axes,
+    state: _FinishState,
+    plan: FinishPlan,
+    preparation: _EndLabelPreparation | None,
+    parameters: Mapping[str, object],
+    affected: list[Artist],
+) -> None:
+    if plan.direct_label_action == "unchanged":
+        return
+    if plan.direct_label_action in ("remove", "legend"):
+        for artist in state.endpoint_labels.values():
+            _remove_if_attached(artist, ax)
+        state.endpoint_labels.clear()
+    if plan.direct_label_action == "remove":
+        return
+    assert preparation is not None
+    if plan.direct_label_action == "legend":
+        with mpl.rc_context(cast(Any, dict(parameters))):
+            legend = ax.legend()
+        affected.append(legend)
+        return
+
+    desired_lines = {candidate.line for candidate in preparation.candidates}
+    for line, stale_artist in tuple(state.endpoint_labels.items()):
+        if line not in desired_lines:
+            _remove_if_attached(stale_artist, ax)
+            del state.endpoint_labels[line]
+
+    font_size = _font_size(cast(Any, _value(parameters, "legend.fontsize")))
+    family = _value(parameters, "font.family")
+    for candidate in preparation.candidates:
+        endpoint_artist = state.endpoint_labels.get(candidate.line)
+        if not _attached(endpoint_artist, ax):
+            endpoint_artist = ax.annotate(
+                candidate.label,
+                xy=candidate.endpoint,
+                xycoords="data",
+                xytext=(6, candidate.y_offset_points),
+                textcoords="offset points",
+                ha="left",
+                va="center",
+                color=candidate.color,
+                fontsize=font_size,
+                family=family,
+                annotation_clip=False,
+                clip_on=False,
+                in_layout=True,
+            )
+            state.endpoint_labels[candidate.line] = endpoint_artist
+        else:
+            assert endpoint_artist is not None
+            endpoint_artist.xy = candidate.endpoint
+            endpoint_artist.set_position((6, candidate.y_offset_points))
+            endpoint_artist.set_text(candidate.label)
+            endpoint_artist.set_color(candidate.color)
+            endpoint_artist.set_fontsize(font_size)
+            endpoint_artist.set_fontfamily(cast(Any, family))
+            endpoint_artist.set_annotation_clip(False)
+            endpoint_artist.set_clip_on(False)
+            endpoint_artist.set_in_layout(True)
+        affected.append(endpoint_artist)
+
+    current_legend = ax.get_legend()
+    if current_legend is not None:
+        current_legend.remove()
+
+
+def _commit(
+    ax: Axes,
+    plan: FinishPlan,
+    direct_preparation: _EndLabelPreparation | None,
+) -> FinishResult:
     previous = _STATES.get(ax, _FinishState())
     state = _FinishState(
         subtitle=previous.subtitle if _attached(previous.subtitle, ax) else None,
         caption=previous.caption if _attached(previous.caption, ax) else None,
         title_artist=previous.title_artist,
         title_base_transform=previous.title_base_transform,
+        endpoint_labels={
+            line: artist
+            for line, artist in previous.endpoint_labels.items()
+            if _attached(artist, ax)
+        },
     )
     figure = _root_figure(ax)
     layout_before = figure.get_layout_engine()
@@ -458,7 +608,17 @@ def _commit(ax: Axes, plan: FinishPlan) -> FinishResult:
     xformatter_before = ax.xaxis.get_major_formatter()
     yformatter_before = ax.yaxis.get_major_formatter()
     existing_managed = tuple(
-        _snapshot_text(item) for item in (state.subtitle, state.caption) if item is not None
+        _snapshot_text(item)
+        for item in (
+            state.subtitle,
+            state.caption,
+            *state.endpoint_labels.values(),
+        )
+        if item is not None
+    )
+    legend_before = ax.get_legend()
+    legend_visible_before = (
+        legend_before.get_visible() if legend_before is not None else None
     )
 
     affected: list[Artist] = []
@@ -562,10 +722,33 @@ def _commit(ax: Axes, plan: FinishPlan) -> FinishResult:
             if specification.labels is not None:
                 matplotlib_axis.set_major_formatter(as_formatter(specification.labels))
 
+        _apply_end_labels(
+            ax,
+            state,
+            plan,
+            direct_preparation,
+            parameters,
+            affected,
+        )
+
+        for line, artist in state.endpoint_labels.items():
+            if not _attached(artist, ax):
+                continue
+            if plan.theme is not None and plan.direct_label_action == "unchanged":
+                artist.set_color(line.get_color())
+                artist.set_fontsize(
+                    _font_size(cast(Any, _value(parameters, "legend.fontsize")))
+                )
+                artist.set_fontfamily(
+                    cast(Any, _value(parameters, "font.family"))
+                )
+            if artist not in affected:
+                affected.append(artist)
+
     except Exception:
-        for artist in tuple(ax.texts):
-            if artist not in texts_before:
-                artist.remove()
+        for text_artist in tuple(ax.texts):
+            if text_artist not in texts_before:
+                text_artist.remove()
         for snapshot in (*title_snapshots, *existing_managed):
             _restore_text(snapshot)
         ax.xaxis.label.set_text(xlabel_before)
@@ -576,10 +759,15 @@ def _commit(ax: Axes, plan: FinishPlan) -> FinishResult:
             figure.set_layout_engine(layout_before)
         if theme_application is not None:
             theme_application.rollback()
+        _restore_legend(ax, legend_before, legend_visible_before)
         raise
 
     _STATES[ax] = state
-    for managed_artist in (state.subtitle, state.caption):
+    for managed_artist in (
+        state.subtitle,
+        state.caption,
+        *state.endpoint_labels.values(),
+    ):
         if _attached(managed_artist, ax) and managed_artist not in affected:
             affected.append(cast(Text, managed_artist))
     return FinishResult(axes=ax, artists=tuple(dict.fromkeys(affected)), plan=plan)
@@ -593,6 +781,7 @@ def finish(
     subtitle: ManagedText = None,
     caption: ManagedText = None,
     theme: str | ThemeSpec | None = None,
+    direct_labels: DirectLabels = None,
     x: AxisSpec | None = None,
     y: AxisSpec | None = None,
     dry_run: Literal[True],
@@ -607,6 +796,7 @@ def finish(
     subtitle: ManagedText = None,
     caption: ManagedText = None,
     theme: str | ThemeSpec | None = None,
+    direct_labels: DirectLabels = None,
     x: AxisSpec | None = None,
     y: AxisSpec | None = None,
     dry_run: Literal[False] = False,
@@ -621,6 +811,7 @@ def finish(
     subtitle: ManagedText = None,
     caption: ManagedText = None,
     theme: str | ThemeSpec | None = None,
+    direct_labels: DirectLabels = None,
     x: AxisSpec | None = None,
     y: AxisSpec | None = None,
     dry_run: bool,
@@ -634,6 +825,7 @@ def finish(
     subtitle: ManagedText = None,
     caption: ManagedText = None,
     theme: str | ThemeSpec | None = None,
+    direct_labels: DirectLabels = None,
     x: AxisSpec | None = None,
     y: AxisSpec | None = None,
     dry_run: bool = False,
@@ -656,6 +848,9 @@ def finish(
     theme : str, ThemeSpec, or None, optional
         Complete theme for the existing axes. Only safely retroactive properties are
         applied; the plan reports preserved creation-, data-, and output-time settings.
+    direct_labels : EndLabelSpec, False, or None, optional
+        Managed labels for visible line endpoints. ``None`` leaves existing endpoint
+        labels unchanged and ``False`` removes them.
     x : AxisSpec or None, optional
         X-axis title and numeric label policy.
     y : AxisSpec or None, optional
@@ -701,19 +896,21 @@ def finish(
         subtitle=subtitle,
         caption=caption,
         theme=theme,
+        direct_labels=direct_labels,
         x=x,
         y=y,
         dry_run=dry_run,
     )
-    plan = _build_plan(
+    plan, direct_preparation = _build_plan(
         resolved_ax,
         title=title,
         subtitle=subtitle,
         caption=caption,
         theme=resolved_theme,
+        direct_labels=direct_labels,
         x=x,
         y=y,
     )
     if dry_run:
         return plan
-    return _commit(resolved_ax, plan)
+    return _commit(resolved_ax, plan, direct_preparation)

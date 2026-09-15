@@ -19,6 +19,10 @@ Plot finishing
 .. autoclass:: ggstyle.FinishResult
    :members:
 
+.. autofunction:: ggstyle.end_labels
+
+.. autoclass:: ggstyle.EndLabelSpec
+
 Figure export
 -------------
 

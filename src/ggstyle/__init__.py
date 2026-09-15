@@ -3,7 +3,8 @@
 v0.3 makes collapsed date coordinates safe for native lines, scatter collections,
 and fill-between polygons. The development API also provides transactional plot labels,
 pure numeric labellers, accessible palettes, publication-safe figure export, and explicit
-Matplotlib adapters. No ``line()`` helper exists yet.
+Matplotlib adapters, including collision-aware direct labels for native lines. No
+``line()`` helper exists yet.
 
     import matplotlib.pyplot as plt
     import ggstyle as gs
@@ -19,6 +20,7 @@ from importlib.metadata import version
 
 from ._cadence import Cadence
 from .dates import AxisSummary, DateAxis, DateDiscoveryError, dates, sync_dates
+from .end_labels import EndLabelSpec, end_labels
 from .finish import AxisSpec, FinishPlan, FinishResult, axis, finish
 from .formats import (
     NumericLabeller,
@@ -49,6 +51,7 @@ __all__ = [
     "Cadence",
     "DateAxis",
     "DateDiscoveryError",
+    "EndLabelSpec",
     "FinishPlan",
     "FinishResult",
     "NumericLabeller",
@@ -60,6 +63,7 @@ __all__ = [
     "available_themes",
     "axis",
     "dates",
+    "end_labels",
     "finish",
     "label_currency",
     "label_number",

@@ -25,6 +25,7 @@ doctest_global_setup = """
 from ggstyle import (
     Cadence,
     AxisSpec,
+    EndLabelSpec,
     FinishPlan,
     FinishResult,
     Palette,
@@ -34,6 +35,7 @@ from ggstyle import (
     available_palettes,
     available_themes,
     dates,
+    end_labels,
     finish,
     label_currency,
     label_number,

@@ -47,8 +47,50 @@ labels, and colours are never changed.
 
 The coordinator also accepts a theme recipe; see :ref:`parameterized-themes` for the
 existing-axes safety boundary. Saving is deliberately separate through
-:func:`ggstyle.save`; legend placement, guide titles, and endpoint labels remain planned
-work rather than unvalidated keyword forwarding.
+:func:`ggstyle.save`. Endpoint labels are an explicit finishing policy rather than
+unvalidated keyword forwarding.
+
+.. _direct-endpoint-labels:
+
+Direct endpoint labels
+----------------------
+
+For labelled line series, :func:`ggstyle.end_labels` replaces legend lookup with labels
+anchored to the final finite data point:
+
+.. code-block:: python
+
+   ax.plot(period, revenue, label="Revenue")
+   ax.plot(period, forecast, label="Forecast")
+
+   result = gs.finish(
+       ax,
+       direct_labels=gs.end_labels(collision="avoid", fallback="legend"),
+   )
+
+Each annotation is an ordinary Matplotlib ``Annotation`` in ``result.artists``. Its data
+anchor remains the endpoint, its text uses the line colour, and only a display-space
+vertical offset is used to separate nearby labels. The annotations participate in
+constrained layout so the figure allocates a right margin. A successful direct-label
+operation removes the axes legend without changing line data, transforms, labels, or
+colours.
+
+Participation follows Matplotlib's public legend labels: labels beginning with an
+underscore are ignored. Every visible participant must be an ordinary ``Line2D`` on a
+rectilinear axes using that axes' data transform, with a finite endpoint inside the
+current view. Mixed line/scatter plots therefore do not receive partial direct labels.
+If any participant is unsupported, an endpoint is outside the view, or all labels cannot
+fit vertically, ``fallback="legend"`` creates a conventional legend for the complete
+set. ``fallback="raise"`` instead fails during preflight before any finishing mutation.
+
+``collision="none"`` leaves every text offset at the exact endpoint height.
+``direct_labels=False`` removes endpoint annotations previously managed by ``finish``;
+``None`` leaves them unchanged. Repeating an explicit request updates and reuses attached
+annotations. Call ``finish`` again after changing the participating lines. Dry runs
+perform the same eligibility and collision preflight without drawing a canvas.
+
+This feature is deliberately narrower than general text repulsion: collections, bars,
+arbitrary annotations, and non-Cartesian axes use the explicit fallback policy.
 
 .. _figure-export:
 

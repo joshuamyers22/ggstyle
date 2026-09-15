@@ -54,6 +54,17 @@ Add the plot and axis labels as one validated operation:
 Matplotlib text artists. See :ref:`plot-finishing` for layout, replacement, and dry-run
 behavior.
 
+For several labelled lines, replace legend lookup with collision-aware endpoint labels:
+
+.. code-block:: python
+
+   ax.plot(index, actual, label="Actual")
+   ax.plot(index, forecast, label="Forecast")
+   gs.finish(ax, direct_labels=gs.end_labels())
+
+Unsupported legend entries fall back to an ordinary legend by default. See
+:ref:`direct-endpoint-labels` for the supported artist boundary and strict policy.
+
 Save the figure
 ---------------
 

@@ -11,6 +11,8 @@ PUBLIC_OBJECTS = (
     "ggstyle.dates.DateDiscoveryError",
     "ggstyle.dates.dates",
     "ggstyle.dates.sync_dates",
+    "ggstyle.end_labels.EndLabelSpec",
+    "ggstyle.end_labels.end_labels",
     "ggstyle.formats.NumericLabeller",
     "ggstyle.formats.label_currency",
     "ggstyle.formats.label_number",

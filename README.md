@@ -6,8 +6,8 @@ A date axis for matplotlib that is easy to use and easy to manipulate.
 fill-between bands.** It also includes the complete built-in ggplot2-inspired theme set.
 The current development API adds transactional plot finishing, theme recipes, pure
 numeric labellers, immutable qualitative/continuous palettes, and publication-safe
-figure export. There is no `line()` helper yet; native Matplotlib plotting remains the
-intended path.
+figure export, including collision-aware direct labels for native lines. There is no
+`line()` helper yet; native Matplotlib plotting remains the intended path.
 
 The date-axis behavior is tested, but the project is still young and follows semantic
 versioning. See the [known limits](#known-limits) before using collapsed mode in
@@ -79,6 +79,25 @@ in place, and `False` removes them. Use `dry_run=True` to validate and inspect t
 operation without mutation. `finish()` never edits data artists or global `rcParams`.
 When a theme is supplied, its diagnostic reports settings such as colour cycles and
 figure size that can only be applied safely before artists or figures are created.
+
+Replace a multi-series line legend with labels at the final visible data points:
+
+```python
+ax.plot(x, revenue, label="Revenue")
+ax.plot(x, forecast, label="Forecast")
+
+result = gs.finish(
+    ax,
+    direct_labels=gs.end_labels(collision="avoid", fallback="legend"),
+)
+```
+
+Endpoint labels use each line's colour, reserve figure space on the right, and separate
+nearby labels vertically without moving the data anchors. The operation is all-or-nothing:
+if a public legend entry is not a visible ordinary `Line2D`, its endpoint is outside the
+view, or the labels do not fit, the default policy builds a conventional legend instead.
+Use `fallback="raise"` to reject that plot during preflight, `collision="none"` to retain
+exact endpoint positions, and `direct_labels=False` to remove labels managed by ggstyle.
 
 ### Save figures
 
@@ -344,8 +363,9 @@ from the Matplotlib axes.
   assignment, legends, and colorbars remain ordinary Matplotlib work until semantic
   scales land.
 - The current `finish()` surface coordinates plot, subtitle, caption, axis-title,
-  numeric-label formatting, and safe existing-axes theming. Guide layout and endpoint
-  labels remain later v0.4 work; filesystem export is intentionally separate in `save()`.
+  numeric-label formatting, safe existing-axes theming, and direct labels for ordinary
+  Cartesian `Line2D` series. General label repulsion, scatter endpoint labels, and guide
+  layout remain later work; filesystem export is intentionally separate in `save()`.
 
 ## Tests
 

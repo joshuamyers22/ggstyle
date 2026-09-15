@@ -39,10 +39,11 @@ the documented code-reduction gate. The fixtures measure API ceremony; they do n
 replace geometry, image, typing, accessibility, or external pilot-user tests.
 
 Before release-sensitive changes, run `python tools/benchmark_registry.py` and build the
-wheel. CI installs that wheel into an isolated environment and renders a polygon-only
-collapsed plot through `tools/smoke_wheel.py`. Minimum and newest direct-dependency pins
-are documented in [REPRODUCIBILITY.md](REPRODUCIBILITY.md); scheduled prerelease failures
-are informational, while failures on stable supported versions block release.
+wheel. CI installs that wheel into an isolated environment and renders a collapsed plot
+with publication finishing through `tools/smoke_wheel.py`. Minimum and newest
+direct-dependency pins are documented in [REPRODUCIBILITY.md](REPRODUCIBILITY.md);
+scheduled prerelease failures are informational, while failures on stable supported
+versions block release.
 
 By contributing, you agree that your contributions are licensed under the MIT License.
 

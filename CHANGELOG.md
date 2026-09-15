@@ -23,6 +23,9 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Add publication-safe `save()` with required physical dimensions, unit and format
   validation, deterministic SVG/PDF metadata, explicit bounding and transparency, atomic
   overwrite protection, and restoration of figure state after success or failure.
+- Add transactional line endpoint labels with display-space collision avoidance,
+  line-colour matching, constrained-layout right margins, managed annotation reuse, and
+  an explicit whole-plot legend-or-raise fallback for unsupported artists or geometry.
 
 ## 0.3.0 - 2026-09-15
 
