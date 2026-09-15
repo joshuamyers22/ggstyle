@@ -2,6 +2,15 @@
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+- Correct collapsed-mode guidance: native `scatter` and `fill_between` collections are
+  unsafe regardless of whether they are created before or after `collapse()`.
+- Document that `sync_dates()` copies a synchronization snapshot in version 0.2 rather
+  than maintaining a live shared observation registry.
+- Add executable expected-failure specifications for the known collection, observation,
+  inverse-mapping, configuration, formatter-reset, and managed-artist lifecycle gaps.
+
 ## 0.2.0 - 2026-09-13
 
 - Add `bw`, `linedraw`, `light`, `dark`, `classic`, `void`, and `test` themes alongside

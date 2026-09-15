@@ -5,8 +5,8 @@ ggstyle documentation
 ``Axes`` and keeps tick placement, label formatting, visible range, grid cadence, and
 date-space annotations independently configurable.
 
-Version 0.1 is the first public release. Read :doc:`pitfalls` before using collapsed axes
-in production figures.
+Version 0.2 provides the date axis and nine ggplot2-inspired themes. Read :doc:`pitfalls`
+before using collapsed axes in production figures.
 
 Start here
 ----------

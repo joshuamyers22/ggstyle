@@ -2,10 +2,9 @@
 
 > Name settled: `ggstyle`.
 
-> Status (2026-08-19): the public `0.1.0` release contains the standalone date axis and
-> themes, structured axis summaries, explicit missing-date handling, generated captions,
-> and multi-panel date synchronization. The `line()`, palette, formatter, label, and save
-> APIs below remain roadmap items for `0.1b` or later.
+> Historical design archive. Its version labels describe the original pre-0.1 roadmap and
+> are not the active release plan. See `DEVELOPMENT_PLAN.md` for the v0.3 safety work and
+> `GGPLOT2_PRODUCT_PLAN.md` for the post-v0.3 product roadmap.
 
 ## 1. Goal
 

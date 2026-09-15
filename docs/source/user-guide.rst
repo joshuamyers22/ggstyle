@@ -80,9 +80,9 @@ they are not treated as discarded source observations.
 Synchronized panels
 -------------------
 
-:func:`ggstyle.sync_dates` adopts several axes, gives them a shared observation registry,
-and applies common date limits. This matters in collapsed mode: without a shared registry,
-the same date can have a different ordinal position in each panel.
+:func:`ggstyle.sync_dates` adopts several axes, copies the same observation snapshot into
+each handle, and applies common date limits. This matters in collapsed mode: without a
+common snapshot, the same date can have a different ordinal position in each panel.
 
 .. code-block:: python
 
@@ -91,6 +91,10 @@ the same date can have a different ordinal position in each panel.
 Use ``limits="intersection"`` to display only the overlapping observation range. If the
 panels already use different modes, pass an explicit mode rather than relying on an
 arbitrary panel to win.
+
+The version 0.2 snapshot is not a live shared registry. Later observations registered on
+one handle do not propagate to the others. Register the new dates explicitly and call
+``sync_dates()`` again before making cross-panel comparisons.
 
 .. _themes:
 

@@ -634,8 +634,10 @@ class DateAxis:
 
         Notes
         -----
-        Only line artists are remapped in version 0.1. See the project pitfalls
-        guide before using collections such as scatter plots.
+        Version 0.2 remaps line artists only. Collections such as scatter plots and
+        ``fill_between`` remain unsafe in collapsed mode regardless of whether they are
+        created before or after this call. Keep the axis in ``show`` mode when those
+        collections are present; see the project pitfalls guide.
         """
         if self._mode == "collapse":
             return self
@@ -895,9 +897,10 @@ def sync_dates(
 
     Notes
     -----
-    All handles receive the union of observed dates. This makes collapsed coordinates
-    comparable across panels instead of assigning different ordinal positions to the
-    same date.
+    All handles receive a copy of the union of observed dates. This makes collapsed
+    coordinates comparable at call time instead of assigning different ordinal positions
+    to the same date. The copies do not form a live shared registry: register later
+    observations explicitly and call ``sync_dates()`` again to resynchronize the panels.
     """
     _axis_sync.validate_options(mode, limits)
 

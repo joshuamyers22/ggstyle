@@ -1,4 +1,4 @@
-"""Visual smoke test: four panels exercising the v0.1 surface."""
+"""Visual smoke test: four panels exercising the v0.2 surface."""
 
 import matplotlib
 

@@ -185,14 +185,16 @@ generated captions.
 
 ## Multiple panels
 
-Synchronize comparable axes with a common observation registry and limits:
+Synchronize comparable axes with a common observation snapshot and limits:
 
 ```python
 handles = gs.sync_dates(axes, mode="collapse", limits="union")
 ```
 
 This prevents the same date from receiving different ordinal positions in independently
-collapsed panels.
+collapsed panels at synchronization time. Version 0.2 copies that snapshot into each
+handle; it does not maintain a live shared registry. If observations later change,
+register the new dates explicitly and call `sync_dates()` again before comparing panels.
 
 ## Design rules
 
@@ -207,9 +209,13 @@ collapsed panels.
 ## Known limits
 
 - Collapsed mode remaps `Line2D` artists only. Collections (`fill_between`, `scatter`) are
-  not yet remapped; annotate through the handle instead.
+  not yet remapped. Creating them before or after `collapse()` is unsafe because their x
+  coordinates remain Matplotlib date numbers while the axis uses observation ordinals.
+  Keep the axis in `show` mode when using those collections; annotate through the handle.
 - Native `ax.axvline(timestamp)` is still wrong in collapsed mode — go through `.loc()`.
-  A registered matplotlib scale would remove that caveat and is the v0.2 candidate.
+  A registered Matplotlib scale is being evaluated against artist adapters for v0.3.
+- `sync_dates()` synchronizes a snapshot; later observations do not propagate between
+  handles automatically.
 - `.tz()` assumes naive data is UTC when converting for display.
 - No palettes module yet: the colour cycle lives in the stylesheets.
 
