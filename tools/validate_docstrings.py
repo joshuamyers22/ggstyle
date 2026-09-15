@@ -30,6 +30,9 @@ PUBLIC_OBJECTS = (
     "ggstyle.theme.available_themes",
     "ggstyle.theme.stylesheet",
     "ggstyle.theme.theme",
+    "ggstyle.theme.ThemeSpec",
+    "ggstyle.theme.theme_params",
+    "ggstyle.theme.theme_spec",
     "ggstyle.theme.use_theme",
 )
 

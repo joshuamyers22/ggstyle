@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import weakref
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, Literal, cast, overload
 
 import matplotlib as mpl
@@ -16,6 +18,13 @@ from matplotlib.transforms import ScaledTranslation, Transform
 
 from .formats import NumericLabeller
 from .formatters import as_formatter
+from .theme import (
+    ThemeSpec,
+    _apply_theme_to_axes,
+    _theme_diagnostics,
+    theme_params,
+    theme_spec,
+)
 
 __all__ = ["AxisSpec", "FinishPlan", "FinishResult", "axis", "finish"]
 
@@ -107,6 +116,8 @@ class FinishPlan:
         Requested managed subtitle operation.
     caption : str, False, or None
         Requested managed caption operation.
+    theme : ThemeSpec or None
+        Resolved theme requested for the existing axes.
     x : AxisSpec or None
         Requested x-axis changes.
     y : AxisSpec or None
@@ -122,6 +133,7 @@ class FinishPlan:
     title: str | None
     subtitle: ManagedText
     caption: ManagedText
+    theme: ThemeSpec | None
     x: AxisSpec | None
     y: AxisSpec | None
     managed_changes: tuple[str, ...]
@@ -139,7 +151,7 @@ class FinishResult:
     axes : matplotlib.axes.Axes
         The exact axes passed to :func:`finish`.
     artists : tuple of matplotlib.artist.Artist
-        Native label artists affected by the request and attached managed text.
+        Native non-data artists affected by the request and attached managed text.
     plan : FinishPlan
         Immutable plan used for the successful mutation.
     """
@@ -172,6 +184,7 @@ class _TextSnapshot:
     horizontalalignment: HorizontalAlignment
     verticalalignment: VerticalAlignment
     fontsize: float
+    fontfamily: tuple[str, ...]
     color: Any
     clip_on: bool
     in_layout: bool
@@ -190,6 +203,7 @@ def _snapshot_text(artist: Text) -> _TextSnapshot:
         horizontalalignment=cast(HorizontalAlignment, artist.get_horizontalalignment()),
         verticalalignment=cast(VerticalAlignment, artist.get_verticalalignment()),
         fontsize=float(artist.get_fontsize()),
+        fontfamily=tuple(artist.get_fontfamily()),
         color=artist.get_color(),
         clip_on=artist.get_clip_on(),
         in_layout=artist.get_in_layout(),
@@ -206,6 +220,7 @@ def _restore_text(snapshot: _TextSnapshot) -> None:
     artist.set_horizontalalignment(snapshot.horizontalalignment)
     artist.set_verticalalignment(snapshot.verticalalignment)
     artist.set_fontsize(snapshot.fontsize)
+    artist.set_fontfamily(snapshot.fontfamily)
     artist.set_color(snapshot.color)
     artist.set_clip_on(snapshot.clip_on)
     artist.set_in_layout(snapshot.in_layout)
@@ -222,14 +237,15 @@ def _title_artists(ax: Axes) -> dict[str, Text]:
     }
 
 
-def _active_title(ax: Axes, state: _FinishState) -> tuple[HorizontalAlignment, Text]:
+def _active_title(
+    ax: Axes, state: _FinishState, preferred: HorizontalAlignment
+) -> tuple[HorizontalAlignment, Text]:
     titles = _title_artists(ax)
     if state.title_artist in titles.values():
         for location, artist in titles.items():
             if artist is state.title_artist:
                 return cast(HorizontalAlignment, location), artist
 
-    preferred = cast(HorizontalAlignment, str(mpl.rcParams["axes.titlelocation"]))
     order = (
         preferred,
         *(name for name in ("left", "center", "right") if name != preferred),
@@ -255,17 +271,22 @@ def _root_figure(ax: Axes) -> Figure:
     return cast(Figure, figure)
 
 
-def _subtitle_transform(ax: Axes) -> Transform:
-    offset = max(3.0, float(mpl.rcParams["axes.titlepad"]) / 2)
+def _value(parameters: Mapping[str, object], key: str) -> object:
+    return parameters.get(key, cast(Any, mpl.rcParams)[key])
+
+
+def _subtitle_transform(ax: Axes, parameters: Mapping[str, object]) -> Transform:
+    offset = max(3.0, float(cast(Any, _value(parameters, "axes.titlepad"))) / 2)
     return ax.transAxes + ScaledTranslation(
         0, offset / 72, _root_figure(ax).dpi_scale_trans
     )
 
 
-def _caption_transform(ax: Axes) -> Transform:
-    label_size = _font_size(mpl.rcParams["axes.labelsize"])
-    tick_size = _font_size(mpl.rcParams["xtick.labelsize"])
-    offset = label_size + tick_size + float(mpl.rcParams["xtick.major.pad"]) + 10
+def _caption_transform(ax: Axes, parameters: Mapping[str, object]) -> Transform:
+    label_size = _font_size(cast(Any, _value(parameters, "axes.labelsize")))
+    tick_size = _font_size(cast(Any, _value(parameters, "xtick.labelsize")))
+    tick_pad = float(cast(Any, _value(parameters, "xtick.major.pad")))
+    offset = label_size + tick_size + tick_pad + 10
     return ax.transAxes + ScaledTranslation(
         0, -offset / 72, _root_figure(ax).dpi_scale_trans
     )
@@ -285,22 +306,31 @@ def _validate_request(
     title: object,
     subtitle: object,
     caption: object,
+    theme: object,
     x: object,
     y: object,
     dry_run: object,
-) -> Axes:
+) -> tuple[Axes, ThemeSpec | None]:
     if not isinstance(ax, Axes):
         raise TypeError(f"ax must be a matplotlib Axes, got {ax!r}")
     _optional_string("title", title)
     _managed_text("subtitle", subtitle)
     _managed_text("caption", caption)
+    if theme is None:
+        resolved_theme = None
+    elif isinstance(theme, ThemeSpec):
+        resolved_theme = theme
+    elif isinstance(theme, str):
+        resolved_theme = theme_spec(theme)
+    else:
+        raise TypeError(f"theme must be a string, ThemeSpec, or None, got {theme!r}")
     if x is not None and not isinstance(x, AxisSpec):
         raise TypeError(f"x must be an AxisSpec or None, got {x!r}")
     if y is not None and not isinstance(y, AxisSpec):
         raise TypeError(f"y must be an AxisSpec or None, got {y!r}")
     if not isinstance(dry_run, bool):
         raise TypeError(f"dry_run must be a bool, got {dry_run!r}")
-    return ax
+    return ax, resolved_theme
 
 
 def _resolved_outer_text(
@@ -321,10 +351,13 @@ def _build_plan(
     title: str | None,
     subtitle: ManagedText,
     caption: ManagedText,
+    theme: ThemeSpec | None,
     x: AxisSpec | None,
     y: AxisSpec | None,
 ) -> FinishPlan:
     changes: list[str] = []
+    if theme is not None:
+        changes.append("apply-theme")
     if title is not None:
         changes.append("set-title")
     for name, specification in (("x", x), ("y", y)):
@@ -354,10 +387,12 @@ def _build_plan(
         title=title,
         subtitle=subtitle,
         caption=caption,
+        theme=theme,
         x=x,
         y=y,
         managed_changes=tuple(changes),
         layout_action=layout_action,
+        diagnostics=_theme_diagnostics(theme) if theme is not None else (),
     )
 
 
@@ -371,8 +406,9 @@ def _apply_managed_text(
     horizontalalignment: HorizontalAlignment,
     verticalalignment: VerticalAlignment,
     fontsize: float,
+    color: object,
+    family: object,
 ) -> Text:
-    color = mpl.rcParams["axes.labelcolor"]
     if not _attached(artist, ax):
         return ax.text(
             *position,
@@ -382,6 +418,7 @@ def _apply_managed_text(
             va=verticalalignment,
             fontsize=fontsize,
             color=color,
+            family=family,
             clip_on=False,
             in_layout=True,
         )
@@ -392,7 +429,8 @@ def _apply_managed_text(
     artist.set_horizontalalignment(horizontalalignment)
     artist.set_verticalalignment(verticalalignment)
     artist.set_fontsize(fontsize)
-    artist.set_color(color)
+    artist.set_color(cast(Any, color))
+    artist.set_fontfamily(cast(Any, family))
     artist.set_clip_on(False)
     artist.set_in_layout(True)
     return artist
@@ -424,14 +462,23 @@ def _commit(ax: Axes, plan: FinishPlan) -> FinishResult:
     )
 
     affected: list[Artist] = []
+    theme_application = None
+    parameters: Mapping[str, object]
     try:
+        if plan.theme is not None:
+            theme_application = _apply_theme_to_axes(ax, plan.theme)
+            affected.extend(theme_application.artists)
+            parameters = theme_params(plan.theme)
+        else:
+            parameters = MappingProxyType({})
         if plan.layout_action == "enable-constrained":
             figure.set_layout_engine("constrained")
 
-        location, title_artist = _active_title(ax, state)
+        preferred = cast(HorizontalAlignment, str(_value(parameters, "axes.titlelocation")))
+        location, title_artist = _active_title(ax, state, preferred)
         if plan.title is not None:
-            title_artist = _title_artists(ax)[str(mpl.rcParams["axes.titlelocation"])]
-            location = cast(HorizontalAlignment, str(mpl.rcParams["axes.titlelocation"]))
+            title_artist = _title_artists(ax)[preferred]
+            location = preferred
             if state.title_artist is not title_artist:
                 if (
                     state.title_artist is not None
@@ -447,16 +494,18 @@ def _commit(ax: Axes, plan: FinishPlan) -> FinishResult:
 
         subtitle = _resolved_outer_text(plan.subtitle, state.subtitle, ax)
         if subtitle is not None:
-            subtitle_size = _font_size(mpl.rcParams["axes.labelsize"])
+            subtitle_size = _font_size(cast(Any, _value(parameters, "axes.labelsize")))
             state.subtitle = _apply_managed_text(
                 ax,
                 state.subtitle,
                 subtitle,
                 position={"left": (0, 1), "center": (0.5, 1), "right": (1, 1)}[location],
-                transform=_subtitle_transform(ax),
+                transform=_subtitle_transform(ax, parameters),
                 horizontalalignment=location,
                 verticalalignment="bottom",
                 fontsize=subtitle_size,
+                color=_value(parameters, "axes.labelcolor"),
+                family=_value(parameters, "font.family"),
             )
             if title_artist.get_text():
                 if state.title_artist is not title_artist:
@@ -488,10 +537,12 @@ def _commit(ax: Axes, plan: FinishPlan) -> FinishResult:
                 state.caption,
                 caption,
                 position=(1, 0),
-                transform=_caption_transform(ax),
+                transform=_caption_transform(ax, parameters),
                 horizontalalignment="right",
                 verticalalignment="top",
-                fontsize=_font_size(mpl.rcParams["xtick.labelsize"]),
+                fontsize=_font_size(cast(Any, _value(parameters, "xtick.labelsize"))),
+                color=_value(parameters, "axes.labelcolor"),
+                family=_value(parameters, "font.family"),
             )
             affected.append(state.caption)
         else:
@@ -523,6 +574,8 @@ def _commit(ax: Axes, plan: FinishPlan) -> FinishResult:
         ax.yaxis.set_major_formatter(yformatter_before)
         if figure.get_layout_engine() is not layout_before:
             figure.set_layout_engine(layout_before)
+        if theme_application is not None:
+            theme_application.rollback()
         raise
 
     _STATES[ax] = state
@@ -539,6 +592,7 @@ def finish(
     title: str | None = None,
     subtitle: ManagedText = None,
     caption: ManagedText = None,
+    theme: str | ThemeSpec | None = None,
     x: AxisSpec | None = None,
     y: AxisSpec | None = None,
     dry_run: Literal[True],
@@ -552,6 +606,7 @@ def finish(
     title: str | None = None,
     subtitle: ManagedText = None,
     caption: ManagedText = None,
+    theme: str | ThemeSpec | None = None,
     x: AxisSpec | None = None,
     y: AxisSpec | None = None,
     dry_run: Literal[False] = False,
@@ -565,6 +620,7 @@ def finish(
     title: str | None = None,
     subtitle: ManagedText = None,
     caption: ManagedText = None,
+    theme: str | ThemeSpec | None = None,
     x: AxisSpec | None = None,
     y: AxisSpec | None = None,
     dry_run: bool,
@@ -577,6 +633,7 @@ def finish(
     title: str | None = None,
     subtitle: ManagedText = None,
     caption: ManagedText = None,
+    theme: str | ThemeSpec | None = None,
     x: AxisSpec | None = None,
     y: AxisSpec | None = None,
     dry_run: bool = False,
@@ -596,6 +653,9 @@ def finish(
     caption : str, False, or None, optional
         Layout-managed caption. ``None`` leaves an existing ggstyle caption unchanged
         and ``False`` removes it.
+    theme : str, ThemeSpec, or None, optional
+        Complete theme for the existing axes. Only safely retroactive properties are
+        applied; the plan reports preserved creation-, data-, and output-time settings.
     x : AxisSpec or None, optional
         X-axis title and numeric label policy.
     y : AxisSpec or None, optional
@@ -635,11 +695,12 @@ def finish(
     True
     >>> plt.close(fig)
     """
-    resolved_ax = _validate_request(
+    resolved_ax, resolved_theme = _validate_request(
         ax,
         title=title,
         subtitle=subtitle,
         caption=caption,
+        theme=theme,
         x=x,
         y=y,
         dry_run=dry_run,
@@ -649,6 +710,7 @@ def finish(
         title=title,
         subtitle=subtitle,
         caption=caption,
+        theme=resolved_theme,
         x=x,
         y=y,
     )

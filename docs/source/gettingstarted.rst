@@ -54,6 +54,28 @@ Add the plot and axis labels as one validated operation:
 Matplotlib text artists. See :ref:`plot-finishing` for layout, replacement, and dry-run
 behavior.
 
+Parameterize a theme
+--------------------
+
+Build one validated recipe and use it either while creating a figure or to finish an
+existing axes:
+
+.. code-block:: python
+
+   report_theme = gs.theme_spec(
+       "minimal",
+       base_size=11,
+       overrides={"axes.titlesize": 14},
+   )
+
+   with gs.theme(report_theme):
+       fig, ax = plt.subplots()
+
+   gs.finish(ax, theme=report_theme)
+
+Applying a theme after axes creation changes only safely retroactive, non-data styling.
+See :ref:`parameterized-themes` for the exact boundary and diagnostics.
+
 Choose what to configure
 ------------------------
 

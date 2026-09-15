@@ -17,6 +17,9 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Add transactional `finish()` and immutable `axis()` specifications for coherent plot,
   subtitle, caption, and axis labels. Managed outer text participates in figure layout,
   supports safe replacement/removal, and retains native Matplotlib axes and artists.
+- Add immutable, validated theme recipes with proportional base sizing, font-family and
+  rcParam overrides, a pure resolved-parameter mapping, and transactional safe theming of
+  existing axes through `finish()` without restyling data or mutating global `rcParams`.
 
 ## 0.3.0 - 2026-09-15
 

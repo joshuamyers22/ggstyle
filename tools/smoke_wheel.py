@@ -33,6 +33,12 @@ def main() -> None:
     else:
         raise RuntimeError("installed wheel synthesized a ninth qualitative color")
 
+    report_theme = gs.theme_spec(
+        "minimal", base_size=11, overrides={"axes.titlesize": 14}
+    )
+    if gs.theme_params(report_theme)["font.size"] != 11:
+        raise RuntimeError("installed wheel produced invalid theme parameters")
+
     dates = pd.DatetimeIndex(["2024-01-02", "2024-01-03", "2024-01-08"])
     figure, ax = plt.subplots()
     try:
@@ -42,11 +48,12 @@ def main() -> None:
             title="Installed wheel",
             subtitle="Layout-aware labels",
             caption="ggstyle smoke test",
+            theme=report_theme,
             y=gs.axis(title="Value", labels=gs.label_number(decimals=1)),
         )
         if result.axes is not ax or not isinstance(result.plan, gs.FinishPlan):
             raise RuntimeError("installed wheel returned invalid finishing objects")
-        if len(result.artists) != 4:
+        if len(result.artists) < 4:
             raise RuntimeError("installed wheel did not create every requested label")
         handle = gs.dates(ax).ticks("daily").collapse()
         if not handle.observations.equals(dates):

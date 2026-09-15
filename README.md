@@ -66,6 +66,7 @@ result = gs.finish(
     title="Revenue",
     subtitle="Trailing twelve months",
     caption="Source: annual report",
+    theme=gs.theme_spec("minimal", base_size=11),
     x=gs.axis(title="Date"),
     y=gs.axis(title="USD", labels=gs.label_currency("$", decimals=0)),
 )
@@ -75,6 +76,8 @@ result = gs.finish(
 Subtitle and caption artists participate in figure layout, repeated calls replace them
 in place, and `False` removes them. Use `dry_run=True` to validate and inspect the
 operation without mutation. `finish()` never edits data artists or global `rcParams`.
+When a theme is supplied, its diagnostic reports settings such as colour cycles and
+figure size that can only be applied safely before artists or figures are created.
 
 ### Ticks — where they go
 
@@ -207,6 +210,31 @@ with gs.theme("dark"):     # scoped; restores every rcParam on exit
 plt.style.use(gs.stylesheet())   # the .mplstyle on its own, no ggstyle import needed
 ```
 
+Create a reusable recipe when a report needs a different type scale, family, or a small
+set of Matplotlib overrides:
+
+```python
+report_theme = gs.theme_spec(
+    "minimal",
+    base_size=11,
+    base_family="DejaVu Sans",
+    overrides={"axes.titlesize": 14},
+)
+
+with gs.theme(report_theme):
+    fig, ax = plt.subplots()      # complete creation-time styling
+
+gs.finish(ax, theme=report_theme) # safe non-data styling on an existing axes
+params = gs.theme_params(report_theme)  # pure, read-only resolved mapping
+```
+
+Recipes validate names and values immediately. Base sizing scales the full theme type
+system proportionally, base family is applied next, and explicit overrides win. Applying
+a recipe through `finish()` updates panel and figure surfaces, spines, grid lines, ticks,
+titles, labels, and an existing legend. It deliberately preserves data artists, property
+cycles, figure geometry, line defaults, save settings, and global `rcParams`; those
+creation-, data-, and output-time settings are listed in `result.diagnostics`.
+
 Available names are `minimal`, `grey`, `bw`, `linedraw`, `light`, `dark`, `classic`,
 `void`, and `test`. The corresponding ggplot2 function spellings, such as `theme_bw` and
 `theme_classic`, are accepted as aliases. `test` is intended for stable visual tests,
@@ -287,9 +315,9 @@ from the Matplotlib axes.
 - Palettes map normalized values and select colours; data-domain training, category
   assignment, legends, and colorbars remain ordinary Matplotlib work until semantic
   scales land.
-- The current `finish()` surface coordinates plot, subtitle, caption, axis-title, and
-  numeric-label formatting only. Theme overrides, guide layout, saving, and endpoint
-  labels remain later v0.4 work.
+- The current `finish()` surface coordinates plot, subtitle, caption, axis-title,
+  numeric-label formatting, and safe existing-axes theming. Guide layout, saving, and
+  endpoint labels remain later v0.4 work.
 
 ## Tests
 

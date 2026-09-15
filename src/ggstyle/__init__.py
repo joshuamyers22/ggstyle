@@ -29,7 +29,16 @@ from .formats import (
 )
 from .formatters import as_formatter
 from .palettes import Palette, available_palettes, palette
-from .theme import DEFAULT_THEME, available_themes, stylesheet, theme, use_theme
+from .theme import (
+    DEFAULT_THEME,
+    ThemeSpec,
+    available_themes,
+    stylesheet,
+    theme,
+    theme_params,
+    theme_spec,
+    use_theme,
+)
 
 __version__ = version("ggstyle")
 __all__ = [
@@ -43,6 +52,7 @@ __all__ = [
     "FinishResult",
     "NumericLabeller",
     "Palette",
+    "ThemeSpec",
     "__version__",
     "as_formatter",
     "available_palettes",
@@ -58,5 +68,7 @@ __all__ = [
     "stylesheet",
     "sync_dates",
     "theme",
+    "theme_params",
+    "theme_spec",
     "use_theme",
 ]

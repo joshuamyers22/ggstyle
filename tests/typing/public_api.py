@@ -1,5 +1,7 @@
 """Static assertions for the public fluent API shipped with ``py.typed``."""
 
+from collections.abc import Mapping
+
 import pandas as pd
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
@@ -34,6 +36,10 @@ def check_date_axis_types(ax: Axes, events: pd.DataFrame) -> None:
 def check_theme_types() -> None:
     """Assert concrete return types for public theme discovery helpers."""
     assert_type(gs.available_themes(), list[str])
+    specification = assert_type(
+        gs.theme_spec("minimal", base_size=11), gs.ThemeSpec
+    )
+    assert_type(gs.theme_params(specification), Mapping[str, object])
 
 
 def check_numeric_labeller_types() -> None:
@@ -60,7 +66,11 @@ def check_finish_types(ax: Axes, dry_run: bool) -> None:
     specification = assert_type(
         gs.axis(title="Share", labels=gs.label_percent()), gs.AxisSpec
     )
-    result = assert_type(gs.finish(ax, title="Report", y=specification), gs.FinishResult)
+    report_theme = gs.theme_spec("minimal", base_size=11)
+    result = assert_type(
+        gs.finish(ax, title="Report", theme=report_theme, y=specification),
+        gs.FinishResult,
+    )
     assert_type(result.axes, Axes)
     assert_type(result.artists, tuple[Artist, ...])
     assert_type(result.plan, gs.FinishPlan)

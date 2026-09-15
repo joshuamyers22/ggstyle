@@ -54,6 +54,7 @@ comparisons pass afterward.
 
 Canonical baselines live in `tests/baseline_images`. The initial set covers expanded and
 collapsed irregular lines, a fill-between band with an internal gap, date annotations and
-spans, synchronized panels with distinct observations, and a gallery of all nine themes.
-Each collection baseline includes its own geometry assertions rather than relying on pixels
+spans, synchronized panels with distinct observations, a gallery of all nine themes, and
+a layout-managed title, subtitle, and caption finished on an existing axes. Each
+collection baseline includes its own geometry assertions rather than relying on pixels
 alone.

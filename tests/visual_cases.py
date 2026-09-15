@@ -178,18 +178,20 @@ def theme_gallery() -> Figure:
 
 def finished_labels() -> Figure:
     """Build a multiline title hierarchy with layout-managed outer text."""
-    with gs.theme("test"):
-        figure, ax = plt.subplots(figsize=(5.6, 3.4), dpi=100)
-        x = np.arange(6)
-        ax.plot(x, [1.0, 1.8, 1.5, 2.4, 2.7, 3.1], marker="o")
-        gs.finish(
-            ax,
-            title="Revenue",
-            subtitle="Trailing six periods\nPreliminary results",
-            caption="Source: illustrative data",
-            x=gs.axis(title="Period"),
-            y=gs.axis(title="USD", labels=gs.label_currency("$", decimals=1)),
-        )
+    figure, ax = plt.subplots(figsize=(5.6, 3.4), dpi=100)
+    x = np.arange(6)
+    ax.plot(x, [1.0, 1.8, 1.5, 2.4, 2.7, 3.1], marker="o")
+    gs.finish(
+        ax,
+        title="Revenue",
+        subtitle="Trailing six periods\nPreliminary results",
+        caption="Source: illustrative data",
+        theme=gs.theme_spec(
+            "test", base_size=11, overrides={"axes.titlesize": 14}
+        ),
+        x=gs.axis(title="Period"),
+        y=gs.axis(title="USD", labels=gs.label_currency("$", decimals=1)),
+    )
 
     assert figure.get_layout_engine() is not None
     assert len(ax.texts) == 2

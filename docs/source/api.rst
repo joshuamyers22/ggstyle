@@ -64,6 +64,12 @@ Palettes
 Themes
 ------
 
+.. autoclass:: ggstyle.ThemeSpec
+
+.. autofunction:: ggstyle.theme_spec
+
+.. autofunction:: ggstyle.theme_params
+
 .. autofunction:: ggstyle.use_theme
 
 .. autoclass:: ggstyle.theme

@@ -45,9 +45,9 @@ or changing axes, artists, layout, or global ``rcParams``. Commit failures resto
 text, formatters, managed artists, and layout state. Data artist coordinates, transforms,
 labels, and colours are never changed.
 
-This first finishing slice does not accept theme overrides, legend placement, guide
-titles, saving options, or endpoint labels. Those remain separate planned work rather
-than unvalidated keyword forwarding.
+The coordinator also accepts a theme recipe; see :ref:`parameterized-themes` for the
+existing-axes safety boundary. Legend placement, guide titles, saving options, and
+endpoint labels remain separate planned work rather than unvalidated keyword forwarding.
 
 Date-axis model
 ---------------
@@ -260,3 +260,40 @@ Each theme is also a standalone matplotlib stylesheet returned by
 :func:`ggstyle.stylesheet`. Facet-strip styling has no direct core matplotlib equivalent.
 The ``void`` theme hides axis-label text through static matplotlib settings, which can
 leave some layout space reserved for a label.
+
+.. _parameterized-themes:
+
+Parameterized themes
+--------------------
+
+:func:`ggstyle.theme_spec` creates an immutable, validated theme recipe. ``base_size``
+scales the theme's complete text hierarchy proportionally, ``base_family`` replaces its
+font family, and explicit ``overrides`` are applied last:
+
+.. code-block:: python
+
+   report_theme = gs.theme_spec(
+       "minimal",
+       base_size=11,
+       base_family="DejaVu Sans",
+       overrides={"axes.titlesize": 14},
+   )
+
+Unknown rcParams, invalid values, and operational settings such as ``backend`` are
+rejected when the recipe is created. :func:`ggstyle.theme_params` resolves a recipe to a
+read-only mapping without mutating global ``rcParams``. This is the integration boundary
+for code that needs Matplotlib settings rather than a context manager.
+
+The same recipe works process-wide with :func:`ggstyle.use_theme`, temporarily with
+:class:`ggstyle.theme`, or transactionally on an existing axes:
+
+.. code-block:: python
+
+   result = gs.finish(ax, theme=report_theme)
+
+Existing-axes theming updates figure and panel surfaces, spines, major grids, ticks,
+titles, axis labels, and an existing legend. It does not recolour data artists or alter
+the axes property cycle, figure geometry, line defaults, save settings, or global
+``rcParams``. ``result.diagnostics`` names the creation-, data-, and output-time rcParams
+that were preserved. Theme application participates in the same rollback contract as
+the rest of :func:`ggstyle.finish`, and repeated application reuses existing artists.

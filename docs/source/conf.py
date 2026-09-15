@@ -28,6 +28,7 @@ from ggstyle import (
     FinishPlan,
     FinishResult,
     Palette,
+    ThemeSpec,
     as_formatter,
     axis,
     available_palettes,
@@ -39,6 +40,8 @@ from ggstyle import (
     label_percent,
     label_si,
     palette,
+    theme_params,
+    theme_spec,
     use_theme,
 )
 """
