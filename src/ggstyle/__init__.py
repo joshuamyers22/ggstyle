@@ -1,8 +1,9 @@
 """ggstyle -- a ggplot2-flavoured plotting layer for Python.
 
 v0.3 makes collapsed date coordinates safe for native lines, scatter collections,
-and fill-between polygons. No palettes module and no ``line()`` yet; those remain
-future additions.
+and fill-between polygons. The development API also provides pure numeric labellers
+with an explicit Matplotlib adapter. No palettes module and no ``line()`` yet; those
+remain future additions.
 
     import matplotlib.pyplot as plt
     import ggstyle as gs
@@ -18,6 +19,14 @@ from importlib.metadata import version
 
 from ._cadence import Cadence
 from .dates import AxisSummary, DateAxis, DateDiscoveryError, dates, sync_dates
+from .formats import (
+    NumericLabeller,
+    label_currency,
+    label_number,
+    label_percent,
+    label_si,
+)
+from .formatters import as_formatter
 from .theme import DEFAULT_THEME, available_themes, stylesheet, theme, use_theme
 
 __version__ = version("ggstyle")
@@ -27,9 +36,15 @@ __all__ = [
     "Cadence",
     "DateAxis",
     "DateDiscoveryError",
+    "NumericLabeller",
     "__version__",
+    "as_formatter",
     "available_themes",
     "dates",
+    "label_currency",
+    "label_number",
+    "label_percent",
+    "label_si",
     "stylesheet",
     "sync_dates",
     "theme",

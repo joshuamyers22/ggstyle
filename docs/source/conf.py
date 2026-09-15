@@ -22,7 +22,17 @@ numpydoc_show_class_members = False
 numpydoc_xref_param_type = False
 
 doctest_global_setup = """
-from ggstyle import Cadence, available_themes, dates, use_theme
+from ggstyle import (
+    Cadence,
+    as_formatter,
+    available_themes,
+    dates,
+    label_currency,
+    label_number,
+    label_percent,
+    label_si,
+    use_theme,
+)
 """
 doctest_global_cleanup = """
 import matplotlib.pyplot as plt

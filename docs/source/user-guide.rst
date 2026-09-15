@@ -24,6 +24,39 @@ Ticks and labels
 :meth:`ggstyle.DateAxis.fmt` controls text without changing positions. Presets include
 ``concise``, ``month-year``, ``quarter``, ``year``, ``iso``, and ``time``.
 
+.. _numeric-labels:
+
+Numeric labels
+--------------
+
+Numeric label factories are separate from date formatting. They return immutable,
+one-value callables that can also be used for report text. Use
+:func:`ggstyle.as_formatter` to cross the Matplotlib boundary explicitly:
+
+.. code-block:: python
+
+   currency = gs.label_currency("$", scale=1_000_000, decimals=1, suffix="M")
+   ax.yaxis.set_major_formatter(gs.as_formatter(currency))
+
+   percent = gs.label_percent(scale=1.0, decimals=1)
+   assert percent(0.125) == "12.5%"
+
+:func:`ggstyle.label_number` provides fixed decimal precision and optional comma
+grouping. :func:`ggstyle.label_si` selects a power-of-1000 prefix such as ``k``, ``M``,
+or ``µ`` and accepts an explicit unit.
+
+The ``scale`` argument is always explicit. For percentages it is the input value that
+means 100 percent; for number and currency labels it is a positive divisor. Formatting
+uses Python's fixed-point, round-half-even behavior and never reads the process locale.
+Negative values use a leading minus by default or parentheses when
+``negative="parentheses"``. The complete default labels for non-finite values are
+``"NaN"``, ``"∞"``, and ``"-∞"``; callers may replace the first two strings.
+
+Creating a labeller or adapter does not install it, alter axis limits, or mutate global
+Matplotlib settings. Installation remains an ordinary Matplotlib operation, and the
+returned :class:`matplotlib.ticker.FuncFormatter` remains available for further
+customization.
+
 Ranges
 ------
 

@@ -4,8 +4,9 @@ A date axis for matplotlib that is easy to use and easy to manipulate.
 
 **v0.3 adds production-safe collapsed coordinates for native lines, scatter points, and
 fill-between bands.** It also includes the complete built-in ggplot2-inspired theme set.
-No palettes module and no `line()` yet—those remain future additions once the axis
-ergonomics have real usage behind them.
+The current development API adds pure numeric labellers with an explicit Matplotlib
+adapter. No palettes module and no `line()` yet—those remain future additions once the
+axis ergonomics have real usage behind them.
 
 The date-axis behavior is tested, but the project is still young and follows semantic
 versioning. See the [known limits](#known-limits) before using collapsed mode in
@@ -82,6 +83,23 @@ line up with your observations and labels that float between them.
 
 Changing the format never moves a tick, and changing the cadence never changes the format.
 That orthogonality is a test, not an aspiration.
+
+### Numeric axes
+
+Percent, currency, grouped-number, and SI-prefix labels are locale-independent callables:
+
+```python
+currency = gs.label_currency("$", scale=1_000_000, decimals=1, suffix="M")
+ax.yaxis.set_major_formatter(gs.as_formatter(currency))
+
+gs.label_percent(decimals=1)(0.125)   # "12.5%"
+gs.label_number(decimals=2)(1234.5)  # "1,234.50"
+gs.label_si(unit="B")(1_500_000)     # "1.5 MB"
+```
+
+Factories do not mutate Matplotlib. The explicit adapter returns an ordinary
+`matplotlib.ticker.FuncFormatter`, so axes and formatter objects remain directly
+available.
 
 ### Range
 

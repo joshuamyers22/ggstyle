@@ -2,6 +2,7 @@
 
 import pandas as pd
 from matplotlib.axes import Axes
+from matplotlib.ticker import FuncFormatter
 from typing_extensions import assert_type
 
 import ggstyle as gs
@@ -32,3 +33,13 @@ def check_date_axis_types(ax: Axes, events: pd.DataFrame) -> None:
 def check_theme_types() -> None:
     """Assert concrete return types for public theme discovery helpers."""
     assert_type(gs.available_themes(), list[str])
+
+
+def check_numeric_labeller_types() -> None:
+    """Assert that numeric factories and their adapter retain useful types."""
+    percent = assert_type(gs.label_percent(decimals=1), gs.NumericLabeller)
+    assert_type(percent(0.125), str)
+    assert_type(gs.label_currency("$"), gs.NumericLabeller)
+    assert_type(gs.label_number(), gs.NumericLabeller)
+    assert_type(gs.label_si(unit="B"), gs.NumericLabeller)
+    assert_type(gs.as_formatter(percent), FuncFormatter)

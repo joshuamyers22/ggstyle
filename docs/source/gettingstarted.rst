@@ -47,3 +47,16 @@ Tick placement and label formatting are deliberately separate:
    handle.zoom("2022", "2024")
 
 See the :doc:`user-guide` for collapsed axes and annotations.
+
+Format a numeric axis
+---------------------
+
+Numeric label factories remain independent of the date-axis handle:
+
+.. code-block:: python
+
+   dollars = gs.label_currency("$", decimals=0)
+   ax.yaxis.set_major_formatter(gs.as_formatter(dollars))
+
+See :ref:`numeric-labels` for percentage, grouped-number, SI-prefix, scaling, and
+non-finite-value behavior.

@@ -22,6 +22,21 @@ Date axes
 
 .. autofunction:: ggstyle.sync_dates
 
+Numeric labels
+--------------
+
+.. autoclass:: ggstyle.NumericLabeller
+
+.. autofunction:: ggstyle.label_percent
+
+.. autofunction:: ggstyle.label_currency
+
+.. autofunction:: ggstyle.label_number
+
+.. autofunction:: ggstyle.label_si
+
+.. autofunction:: ggstyle.as_formatter
+
 Themes
 ------
 
