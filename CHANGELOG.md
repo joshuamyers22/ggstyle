@@ -4,6 +4,11 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Select a function-first, transactional architecture for the v0.4 publication-finishing
+  API and add ten machine-checked usability fixtures spanning five target-user
+  perspectives. The fixture gate preserves native Matplotlib access and requires at least
+  a 35% reduction in non-data formatting statements.
+
 ## 0.3.0 - 2026-09-15
 
 - Replace line-specific coordinate mutation with an invertible registered matplotlib

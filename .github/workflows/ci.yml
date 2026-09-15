@@ -28,6 +28,7 @@ jobs:
       - run: uv run pytest -q --cov=ggstyle --cov-report=term-missing
       - run: uv run ruff check .
       - run: uv run mypy
+      - run: uv run python tools/finishing_usability.py
 
   platform:
     name: platform (${{ matrix.os }})

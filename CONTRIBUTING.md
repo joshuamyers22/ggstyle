@@ -32,6 +32,12 @@ Rendering changes must also follow the
 [visual regression workflow](docs/visual-regression.md); baseline replacements require
 an explanation and review of the generated image diff.
 
+Publication-finishing APIs must follow
+[ADR 0002](docs/architecture/0002-finishing-api.md). Changes to the accepted vocabulary
+must update its canonical fixtures and keep `python tools/finishing_usability.py` above
+the documented code-reduction gate. The fixtures measure API ceremony; they do not
+replace geometry, image, typing, accessibility, or external pilot-user tests.
+
 Before release-sensitive changes, run `python tools/benchmark_registry.py` and build the
 wheel. CI installs that wheel into an isolated environment and renders a polygon-only
 collapsed plot through `tools/smoke_wheel.py`. Minimum and newest direct-dependency pins

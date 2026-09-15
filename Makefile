@@ -1,4 +1,4 @@
-.PHONY: sync lint type test benchmark visual visual-update docs build check
+.PHONY: sync lint type test benchmark usability visual visual-update docs build check
 
 sync:
 	uv sync --frozen --all-extras
@@ -15,6 +15,9 @@ test:
 benchmark:
 	uv run python tools/benchmark_registry.py
 
+usability:
+	uv run python tools/finishing_usability.py
+
 visual:
 	LANG=C LC_ALL=C TZ=UTC MPLBACKEND=Agg GGSTYLE_RUN_VISUAL=1 uv run --frozen --group visual pytest -q tests/test_visual_regressions.py
 
@@ -29,4 +32,4 @@ build:
 	uv build
 	uv run twine check dist/*
 
-check: lint type test benchmark docs build
+check: lint type test benchmark usability docs build
