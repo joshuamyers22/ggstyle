@@ -11,8 +11,8 @@ A :class:`ggstyle.DateAxis` is attached to one matplotlib ``Axes``. Repeated cal
    Use matplotlib date numbers. Missing calendar dates occupy space.
 
 ``collapse``
-   Map sorted, unique observations to ordinal positions. Unobserved dates occupy no
-   space.
+   Use a registered scale that maps sorted, unique observations to ordinal display
+   positions. Artist data and limits remain matplotlib date numbers.
 
 Ticks and labels
 ----------------
@@ -36,15 +36,19 @@ Collapsed axes
 
 Call :meth:`ggstyle.DateAxis.collapse` to remove unobserved gaps and
 :meth:`ggstyle.DateAxis.expand` to restore calendar spacing. The observations come from
-the plotted lines and any explicit ``data=`` passed to :func:`ggstyle.dates`.
+the plotted lines and any explicit ``data=`` passed to :func:`ggstyle.dates`. Lines,
+``scatter``, ``fill_between``, and native data-space annotations all pass through the
+same scale without having their geometry rewritten. Until collection discovery lands, a
+collection-only plot must pass its dates explicitly through ``data=``.
 
 Annotations
 -----------
 
 Use :meth:`ggstyle.DateAxis.loc`, :meth:`ggstyle.DateAxis.vline`, and
-:meth:`ggstyle.DateAxis.span` for coordinates that remain correct in both modes. This is
-especially important on collapsed axes, where a raw matplotlib date number is not an
-axis position.
+:meth:`ggstyle.DateAxis.span` for coordinates that remain correct in both modes.
+:meth:`ggstyle.DateAxis.loc` returns a native matplotlib date number in either mode;
+collapsed display positioning belongs to the registered scale. Native calls such as
+``ax.axvline(timestamp)`` therefore work as expected.
 
 Axis summaries and captions
 ---------------------------

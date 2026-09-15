@@ -19,7 +19,7 @@ def positions_for_cadence(
     mode: _coordinates.CoordinateMode,
     knots: np.ndarray,
 ) -> tuple[pd.DatetimeIndex, np.ndarray]:
-    """Return label dates and axis positions for a visible date range."""
+    """Return label dates and native data coordinates for a visible date range."""
     estimated = int(max((hi - lo).total_seconds(), 0) / cadence.approx_seconds) + 3
     if estimated > MAX_TICKS:
         raise ValueError(
@@ -47,8 +47,7 @@ def positions_for_cadence(
         if positions.size == 0:
             return pd.DatetimeIndex([]), positions
 
-    limit_numbers = np.asarray(mdates.date2num(pd.DatetimeIndex([lo, hi])), dtype=float)
-    limits = _coordinates.dates_to_positions(limit_numbers, knots, mode)
+    limits = np.asarray(mdates.date2num(pd.DatetimeIndex([lo, hi])), dtype=float)
     inside = (positions >= min(limits) - 1e-9) & (positions <= max(limits) + 1e-9)
     return pd.DatetimeIndex(labels)[inside], positions[inside]
 
@@ -72,4 +71,4 @@ def _collapsed_positions(
         inside_period = knots[np.clip(indexes, 0, knots.size - 1)] < following
 
     valid = (indexes >= 0) & (indexes < knots.size) & inside_period
-    return indexes[valid].astype(float), candidates[valid]
+    return knots[indexes[valid]], candidates[valid]

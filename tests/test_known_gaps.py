@@ -1,11 +1,9 @@
-"""Executable specifications for known v0.2 safety gaps.
+"""Executable specifications for v0.2 safety gaps and their regressions.
 
-Each test states the desired safe contract and is marked ``xfail(strict=True)`` while the
-corresponding v0.3 work is outstanding. A fix therefore produces an XPASS failure until
-the marker is removed, preventing resolved gaps from remaining hidden in the ledger.
+Outstanding contracts remain ``xfail(strict=True)``. Once resolved, their markers are
+removed so the same examples become ordinary regression tests.
 """
 
-from weakref import WeakKeyDictionary
 from zoneinfo import ZoneInfoNotFoundError
 
 import matplotlib
@@ -25,35 +23,6 @@ _V03_GAP = pytest.mark.xfail(strict=True, reason="known v0.2 gap; required for v
 def dates() -> pd.DatetimeIndex:
     """Irregular observations that make calendar and ordinal positions diverge."""
     return pd.bdate_range("2024-01-01", periods=5)
-
-
-@_V03_GAP
-@pytest.mark.parametrize("kind", ["scatter", "fill_between"])
-def test_collapse_rejects_unsupported_date_collections_before_mutation(
-    dates: pd.DatetimeIndex, kind: str
-) -> None:
-    """Unsupported collections must fail preflight in every creation order."""
-    fig, ax = plt.subplots()
-    try:
-        ax.plot(dates, np.arange(len(dates), dtype=float))
-        if kind == "scatter":
-            ax.scatter(dates, np.arange(len(dates), dtype=float))
-        else:
-            values = np.arange(len(dates), dtype=float)
-            ax.fill_between(dates, values - 0.5, values + 0.5)
-
-        handle = gs.dates(ax)
-        original_line = np.asarray(ax.lines[0].get_xdata(orig=False), dtype=float).copy()
-
-        with pytest.raises(RuntimeError, match=r"unsupported.*collection"):
-            handle.collapse()
-
-        assert handle.mode == "show"
-        assert np.array_equal(
-            np.asarray(ax.lines[0].get_xdata(orig=False), dtype=float), original_line
-        )
-    finally:
-        plt.close(fig)
 
 
 @_V03_GAP
@@ -115,7 +84,6 @@ def test_synchronized_handles_share_live_registry_updates() -> None:
         plt.close(fig)
 
 
-@_V03_GAP
 def test_single_observation_mapping_round_trips_outside_the_knot() -> None:
     """Forward and inverse rules must agree for a one-observation registry."""
     fig, ax = plt.subplots()
@@ -163,11 +131,10 @@ def test_false_disables_previously_enabled_minor_labels(
         plt.close(fig)
 
 
-@_V03_GAP
-def test_externally_removed_annotation_is_safe_to_replay(
+def test_externally_removed_annotation_is_safe_across_mode_changes(
     dates: pd.DatetimeIndex,
 ) -> None:
-    """Replay must treat an externally removed managed artist as already absent."""
+    """Mode changes must not touch an externally removed managed artist."""
     fig, ax = plt.subplots()
     try:
         ax.plot(dates, np.arange(len(dates), dtype=float))
@@ -199,15 +166,15 @@ def test_externally_removed_caption_is_safe_to_replace(
         plt.close(fig)
 
 
-@_V03_GAP
-def test_artist_state_uses_weak_object_keys(dates: pd.DatetimeIndex) -> None:
-    """Removed artists must not leave ID-keyed geometry that can be misapplied."""
+def test_scale_architecture_keeps_no_artist_geometry_snapshots(
+    dates: pd.DatetimeIndex,
+) -> None:
+    """Scale-based coordinates cannot associate stale geometry with reused IDs."""
     fig, ax = plt.subplots()
     try:
         ax.plot(dates, np.arange(len(dates), dtype=float))
         handle = gs.dates(ax).collapse()
 
-        assert isinstance(handle._original_x, WeakKeyDictionary)
-        assert all(artist in ax.lines for artist in handle._original_x)
+        assert not hasattr(handle, "_original_x")
     finally:
         plt.close(fig)

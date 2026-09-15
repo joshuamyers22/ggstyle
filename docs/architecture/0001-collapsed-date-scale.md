@@ -16,8 +16,8 @@ restoration logic.
 Matplotlib already separates unit conversion from axis scaling. A registered x
 scale can receive Matplotlib date numbers after unit conversion, map them to a
 continuous observation-ordinal display coordinate, and supply the inverse mapping.
-The focused executable spike in `tests/test_registered_scale_poc.py` demonstrates
-that this route works without rewriting artist geometry.
+The focused executable spike demonstrated that this route works without rewriting artist
+geometry; its cases now live as production regressions in `tests/test_date_scale.py`.
 
 ## Decision
 
@@ -38,9 +38,8 @@ The proof of concept establishes these properties:
 | Shared x axes | Pass | Every shared axes receives an equivalent scale instance. |
 | Inverse coordinate readout | Pass | The scale transform is invertible inside and outside the registry. |
 
-This is the sole production direction. The spike is deliberately test-local: PR4
-will introduce the private production scale and route `DateAxis` through it after
-the contracts below are reviewable.
+This is the sole production direction. The private implementation lives in
+`ggstyle._date_scale`, and `DateAxis` installs or removes it when switching modes.
 
 ## Coordinate mapping
 
@@ -183,7 +182,8 @@ remapping. The implementation must, however, install the scale before rebuilding
 ggstyle locators and formatters because `set_xscale()` may replace them, and registry
 changes must install or invalidate an immutable transform snapshot transactionally.
 
-The scale must be verified on every supported Matplotlib version before PR4 merges.
+The scale is verified on the minimum and pinned Matplotlib environments in addition to
+the ordinary CI matrix.
 Transforms outside the declared boundary remain explicit exclusions. The subsequent
 roadmap should treat scatter and polygon work as provenance, diagnostics, and
 regression coverage—not as geometry-mutation adapters.

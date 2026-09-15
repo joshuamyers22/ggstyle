@@ -4,8 +4,16 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Replace line-specific coordinate mutation with an invertible registered matplotlib
+  scale used uniformly by lines, `scatter`, `fill_between`, native x-data annotations,
+  limits, autoscaling, and shared axes.
+- Preserve artist calendar geometry across repeated collapse/expand transitions and fix
+  single-observation forward/inverse extrapolation to use one calendar day per ordinal.
+- Make `DateAxis.loc()` return the same native matplotlib date coordinate in both modes;
+  ordinal display positions now belong exclusively to the axis transform.
 - Correct collapsed-mode guidance: native `scatter` and `fill_between` collections are
-  unsafe regardless of whether they are created before or after `collapse()`.
+  supported by the registered scale, while collection-only observation discovery still
+  requires explicit `data=`.
 - Document that `sync_dates()` copies a synchronization snapshot in version 0.2 rather
   than maintaining a live shared observation registry.
 - Add executable expected-failure specifications for the known collection, observation,
@@ -43,6 +51,3 @@ Initial public release.
 - Add structured ``AxisSummary`` metadata and captions generated from the same source.
 - Add explicit ``missing="raise"`` and ``missing="drop"`` date policies.
 - Add ``sync_dates`` for comparable date coordinates and limits across multiple panels.
-
-Collapsed mode currently remaps line artists only. Collection remapping remains planned
-for a later release.

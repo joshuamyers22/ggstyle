@@ -71,9 +71,13 @@ def line_modes() -> Figure:
     )
     assert np.allclose(
         np.asarray(collapsed.lines[0].get_xdata(orig=False), dtype=float),
+        mdates.date2num(_DATES),
+    )
+    assert np.allclose(
+        collapsed.xaxis.get_transform().transform(mdates.date2num(_DATES)),
         np.arange(len(_DATES), dtype=float),
     )
-    assert collapsed_handle.loc(_DATES[-1]) == len(_DATES) - 1
+    assert collapsed_handle.loc(_DATES[-1]) == mdates.date2num(_DATES[-1])
     return figure
 
 

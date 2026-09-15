@@ -83,7 +83,8 @@ class TestPolarsInput:
         handle = gs.dates(ax, data=series).collapse()
         friday = handle.loc("2020-03-06")
         monday = handle.loc("2020-03-09")
-        assert monday - friday == pytest.approx(1.0)
+        displayed = ax.xaxis.get_transform().transform([friday, monday])
+        assert displayed[1] - displayed[0] == pytest.approx(1.0)
         plt.close(fig)
 
 

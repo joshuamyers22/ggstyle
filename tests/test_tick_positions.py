@@ -33,7 +33,7 @@ def test_collapsed_mode_uses_first_observation_in_each_period() -> None:
         knots=np.asarray(mdates.date2num(observations), dtype=float),
     )
     assert list(labels) == [pd.Timestamp("2024-01-01"), pd.Timestamp("2024-02-01")]
-    assert np.array_equal(positions, [0.0, 2.0])
+    assert np.array_equal(positions, mdates.date2num(observations[[0, 2]]))
 
 
 def test_collapsed_mode_requires_observations() -> None:

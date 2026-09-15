@@ -110,24 +110,27 @@ needs no extra dependency. With several series, the axis uses the union of obser
 Every one of these is correct in both modes — that is the whole point of the handle:
 
 ```python
-.loc("2020-03-23")                    # -> axis position; the escape-hatch primitive
+.loc("2020-03-23")                    # -> native matplotlib date coordinate
 .vline("2020-03-23", label="trough")
 .span("2020-02-19", "2020-03-23", label="drawdown")
 .spans(events_df, start="begin", end="end", label="name")
 .grid("yearly")                       # gridline cadence, independent of ticks
 ```
 
-In collapsed mode a date that falls inside a gap (a Sunday, a holiday) is placed by linear
-interpolation between its neighbours. `loc(date, snap=True)` rounds to the nearest
-observation instead; `loc(date, strict=True)` raises if the date was never observed.
+In collapsed mode the scale places a date inside a gap (a Sunday, a holiday) by linear
+interpolation between its neighbours. `loc()` always returns the same native matplotlib
+date coordinate in either mode; `loc(date, snap=True)` rounds to the nearest observation,
+and `loc(date, strict=True)` raises if the date was never observed.
 
 ### Escape hatch
 
-`.loc()` is the primitive that keeps raw matplotlib correct:
+Native matplotlib date input now passes through the same registered scale. Use datetime
+values directly, or use `.loc()` when you want ggstyle's parsing, snapping, or strict
+lookup:
 
 ```python
 handle = gs.dates(ax).collapse()
-ax.axvline(handle.loc("2020-03-23"))   # lands in the right place
+ax.axvline(pd.Timestamp("2020-03-23")) # lands in the right place
 ax.set_xlim(handle.loc("2020-01"), handle.loc("2021-01"))
 ```
 
@@ -208,12 +211,11 @@ register the new dates explicitly and call `sync_dates()` again before comparing
 
 ## Known limits
 
-- Collapsed mode remaps `Line2D` artists only. Collections (`fill_between`, `scatter`) are
-  not yet remapped. Creating them before or after `collapse()` is unsafe because their x
-  coordinates remain Matplotlib date numbers while the axis uses observation ordinals.
-  Keep the axis in `show` mode when using those collections; annotate through the handle.
-- Native `ax.axvline(timestamp)` is still wrong in collapsed mode — go through `.loc()`.
-  A registered Matplotlib scale is being evaluated against artist adapters for v0.3.
+- Collapsed mode supports lines, `scatter`, `fill_between`, and native data-space or
+  x-data blended transforms without rewriting their geometry. A collection-only chart
+  still needs `gs.dates(ax, data=dates)` because observation discovery remains line-only
+  until the refresh lifecycle lands. Custom transforms outside `ax.transData` are not
+  inferred as date-bearing.
 - `sync_dates()` synchronizes a snapshot; later observations do not propagate between
   handles automatically.
 - `.tz()` assumes naive data is UTC when converting for display.

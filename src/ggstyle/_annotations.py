@@ -1,8 +1,8 @@
-"""Replayable Matplotlib annotation state and rendering."""
+"""Matplotlib annotation state and rendering."""
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -53,16 +53,3 @@ def draw(ax: Axes, annotation: Annotation, locate: Callable[[Any], float]) -> No
                 clip_on=True,
             )
         )
-
-
-def replay(
-    ax: Axes,
-    annotations: Iterable[Annotation],
-    locate: Callable[[Any], float],
-) -> None:
-    """Remove existing artists and redraw annotations in current coordinates."""
-    for annotation in annotations:
-        for artist in annotation.artists:
-            artist.remove()
-        annotation.artists.clear()
-        draw(ax, annotation, locate)

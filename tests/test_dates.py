@@ -329,7 +329,8 @@ class TestCollapse:
         assert handle.mode == "collapse"
         friday = handle.loc("2020-03-06")
         monday = handle.loc("2020-03-09")
-        assert monday - friday == pytest.approx(1.0)
+        displayed = ax.xaxis.get_transform().transform([friday, monday])
+        assert displayed[1] - displayed[0] == pytest.approx(1.0)
 
     def test_show_mode_keeps_the_gap(self, ax):
         handle = gs.dates(ax)
@@ -337,12 +338,15 @@ class TestCollapse:
         monday = handle.loc("2020-03-09")
         assert monday - friday == pytest.approx(3.0)
 
-    def test_line_data_is_remapped_and_restored(self, ax):
+    def test_line_data_remains_calendar_data_in_both_modes(self, ax):
         handle = gs.dates(ax)
         original = np.array(ax.lines[0].get_xdata(orig=False), dtype=float)
         handle.collapse()
         collapsed = np.array(ax.lines[0].get_xdata(orig=False), dtype=float)
-        assert np.allclose(collapsed, np.arange(len(original)))
+        assert np.allclose(collapsed, original)
+        assert np.allclose(
+            ax.xaxis.get_transform().transform(collapsed), np.arange(len(original))
+        )
         handle.expand()
         restored = np.array(ax.lines[0].get_xdata(orig=False), dtype=float)
         assert np.allclose(restored, original)
@@ -355,17 +359,22 @@ class TestCollapse:
         handle.collapse()
         collapsed = [handle.loc(p) for p in probes]
         assert shown == sorted(shown)
-        assert collapsed == sorted(collapsed)
+        assert collapsed == shown
 
     def test_observation_positions_are_exact_integers(self, ax):
         handle = gs.dates(ax).collapse()
-        assert handle.loc("2020-01-01") == pytest.approx(0.0)
-        assert handle.loc("2020-01-02") == pytest.approx(1.0)
+        locations = [handle.loc("2020-01-01"), handle.loc("2020-01-02")]
+        assert np.allclose(ax.xaxis.get_transform().transform(locations), [0.0, 1.0])
 
     def test_date_in_a_gap_interpolates(self, ax):
         handle = gs.dates(ax).collapse()
-        saturday = handle.loc("2020-03-07")
-        assert handle.loc("2020-03-06") < saturday < handle.loc("2020-03-09")
+        locations = [
+            handle.loc("2020-03-06"),
+            handle.loc("2020-03-07"),
+            handle.loc("2020-03-09"),
+        ]
+        friday, saturday, monday = ax.xaxis.get_transform().transform(locations)
+        assert friday < saturday < monday
 
     def test_snap_rounds_to_nearest_observation(self, ax):
         handle = gs.dates(ax).collapse()
@@ -379,9 +388,14 @@ class TestCollapse:
             handle.loc("2020-03-07", strict=True)
 
     def test_ticks_land_on_real_trading_days(self, ax):
-        gs.dates(ax).collapse().ticks("monthly")
-        for position in positions(ax):
-            assert float(position) == pytest.approx(round(float(position)), abs=1e-9)
+        handle = gs.dates(ax).collapse().ticks("monthly")
+        locations = np.asarray(positions(ax), dtype=float)
+        displayed = ax.xaxis.get_transform().transform(locations)
+        assert np.allclose(displayed, np.round(displayed))
+        assert all(
+            handle.date_at(value).normalize() in handle.observations
+            for value in locations
+        )
 
     def test_collapse_needs_observations(self):
         fig, empty = plt.subplots()
@@ -415,17 +429,20 @@ class TestAnnotations:
         line = handle._annotations[0].artists[0]
         assert line.get_xdata()[0] == pytest.approx(handle.loc("2020-06-15"))
 
-    def test_span_replays_on_mode_change(self, ax):
+    def test_span_uses_scale_without_replay_on_mode_change(self, ax):
         handle = gs.dates(ax).span("2020-02-19", "2020-03-23", label="drawdown")
         rect = handle._annotations[0].artists[0]
-        before = rect.get_x()
         handle.collapse()
-        rect = handle._annotations[0].artists[0]
-        assert rect.get_x() != pytest.approx(before)
-        assert rect.get_x() == pytest.approx(handle.loc("2020-02-19"))
-        assert rect.get_x() + rect.get_width() == pytest.approx(
-            handle.loc("2020-03-23")
-        )
+        assert handle._annotations[0].artists[0] is rect
+        rendered_x = rect.get_transform().transform(rect.get_path().vertices)[:, 0]
+        expected_x = ax.transData.transform(
+            [
+                (handle.loc("2020-02-19"), 0.0),
+                (handle.loc("2020-03-23"), 0.0),
+            ]
+        )[:, 0]
+        assert min(rendered_x) == pytest.approx(min(expected_x))
+        assert max(rendered_x) == pytest.approx(max(expected_x))
 
     def test_spans_from_frame(self, ax):
         events = pd.DataFrame(
@@ -440,12 +457,22 @@ class TestAnnotations:
 
     def test_annotation_lines_are_not_treated_as_data(self, ax):
         handle = gs.dates(ax).vline("2020-06-15")
+        original = np.asarray(ax.lines[0].get_xdata(orig=False), dtype=float).copy()
         handle.collapse()
         data_line = ax.lines[0]
         assert np.allclose(
-            np.array(data_line.get_xdata(), dtype=float),
-            np.arange(len(handle.observations)),
+            np.asarray(data_line.get_xdata(orig=False), dtype=float),
+            original,
         )
+
+    def test_native_datetime_vline_works_after_collapse(self, ax):
+        handle = gs.dates(ax).collapse()
+        line = ax.axvline(pd.Timestamp("2020-06-15"))
+        fig = ax.figure
+        fig.canvas.draw()
+        expected = ax.transData.transform((handle.loc("2020-06-15"), 0.0))[0]
+        actual = line.get_transform().transform(line.get_path().vertices)[:, 0]
+        assert np.allclose(actual, expected)
 
 
 class TestGrid:

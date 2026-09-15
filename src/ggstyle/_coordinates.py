@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
@@ -9,56 +10,97 @@ import numpy as np
 CoordinateMode = Literal["show", "collapse"]
 
 
+@dataclass(frozen=True)
+class CollapsedDateMapping:
+    """Immutable numeric policy for a prepared collapsed-date registry."""
+
+    knots: np.ndarray
+
+    def __init__(self, knots: np.ndarray) -> None:
+        object.__setattr__(self, "knots", canonical_knots(knots))
+
+    def forward(self, values: np.ndarray) -> np.ndarray:
+        """Map native date numbers to observation ordinals."""
+        data, mask = _array_and_mask(values)
+        shape = data.shape
+        flat = data.reshape(-1)
+        indexes = np.arange(self.knots.size, dtype=float)
+        if self.knots.size == 1:
+            return _restore_mask((flat - self.knots[0]).reshape(shape), mask)
+
+        positions = np.interp(flat, self.knots, indexes)
+        step = _typical_step(self.knots)
+        below = flat < self.knots[0]
+        above = flat > self.knots[-1]
+        positions[below] = (flat[below] - self.knots[0]) / step
+        positions[above] = indexes[-1] + (flat[above] - self.knots[-1]) / step
+        return _restore_mask(positions.reshape(shape), mask)
+
+    def inverse(self, positions: np.ndarray) -> np.ndarray:
+        """Map observation ordinals back to native date numbers."""
+        data, mask = _array_and_mask(positions)
+        shape = data.shape
+        flat = data.reshape(-1)
+        indexes = np.arange(self.knots.size, dtype=float)
+        if self.knots.size == 1:
+            return _restore_mask((self.knots[0] + flat).reshape(shape), mask)
+
+        values = np.interp(flat, indexes, self.knots)
+        step = _typical_step(self.knots)
+        below = flat < 0
+        above = flat > indexes[-1]
+        values[below] = self.knots[0] + flat[below] * step
+        values[above] = self.knots[-1] + (flat[above] - indexes[-1]) * step
+        return _restore_mask(values.reshape(shape), mask)
+
+
 def dates_to_positions(
     values: np.ndarray, knots: np.ndarray, mode: CoordinateMode
 ) -> np.ndarray:
     """Map matplotlib date numbers into the selected coordinate system."""
-    values = np.atleast_1d(np.asarray(values, dtype=float))
     if mode == "show":
-        return values
+        data, mask = _array_and_mask(values)
+        return _restore_mask(data, mask)
 
-    knots = _require_knots(knots)
-    indexes = np.arange(knots.size, dtype=float)
-    if knots.size == 1:
-        return values - knots[0]
-
-    positions = np.interp(values, knots, indexes)
-    step = _typical_step(knots)
-    below = values < knots[0]
-    above = values > knots[-1]
-    positions[below] = (values[below] - knots[0]) / step
-    positions[above] = indexes[-1] + (values[above] - knots[-1]) / step
-    return positions
+    return CollapsedDateMapping(knots).forward(values)
 
 
 def positions_to_dates(
     positions: np.ndarray, knots: np.ndarray, mode: CoordinateMode
 ) -> np.ndarray:
     """Map axis positions back to matplotlib date numbers."""
-    positions = np.atleast_1d(np.asarray(positions, dtype=float))
     if mode == "show":
-        return positions
+        data, mask = _array_and_mask(positions)
+        return _restore_mask(data, mask)
 
-    knots = _require_knots(knots)
-    indexes = np.arange(knots.size, dtype=float)
-    if knots.size == 1:
-        return np.full_like(positions, knots[0])
-
-    values = np.interp(positions, indexes, knots)
-    step = _typical_step(knots)
-    below = positions < 0
-    above = positions > indexes[-1]
-    values[below] = knots[0] + positions[below] * step
-    values[above] = knots[-1] + (positions[above] - indexes[-1]) * step
-    return values
+    return CollapsedDateMapping(knots).inverse(positions)
 
 
-def _require_knots(knots: np.ndarray) -> np.ndarray:
-    values = np.atleast_1d(np.asarray(knots, dtype=float))
+def canonical_knots(knots: np.ndarray) -> np.ndarray:
+    """Return finite, sorted, unique knots or reject an empty registry."""
+    values = np.asarray(knots, dtype=float).reshape(-1)
+    values = np.unique(values[np.isfinite(values)])
     if values.size == 0:
         raise ValueError("collapsed coordinates require at least one observed date")
+    values.setflags(write=False)
     return values
 
 
 def _typical_step(knots: np.ndarray) -> float:
-    return float(np.median(np.diff(knots))) or 1.0
+    if knots.size == 1:
+        return 1.0
+    return float(np.median(np.diff(knots)))
+
+
+def _array_and_mask(values: np.ndarray) -> tuple[np.ndarray, np.ndarray | None]:
+    masked = np.ma.isMaskedArray(values)
+    array = np.ma.asarray(values, dtype=float)
+    data = np.array(np.ma.getdata(array), dtype=float, copy=True)
+    mask = np.ma.getmaskarray(array).copy() if masked else None
+    return data, mask
+
+
+def _restore_mask(values: np.ndarray, mask: np.ndarray | None) -> np.ndarray:
+    if mask is None:
+        return values
+    return np.ma.array(values, mask=mask, copy=False)

@@ -42,10 +42,9 @@ from . import (
     _axis_data,
     _axis_sync,
     _cadence,
-    _coordinates,
     _date_ranges,
+    _date_scale,
     _grid,
-    _mode_lines,
     _tick_config,
     _tick_plan,
     _tick_positions,
@@ -137,7 +136,6 @@ class DateAxis:
         self._caption_artist: Any | None = None
 
         self._annotations: list[_annotations.Annotation] = []
-        self._original_x: dict[int, np.ndarray] = {}
         self._refreshing = False
         self._trusted = False
         self._missing_values = 0
@@ -271,21 +269,9 @@ class DateAxis:
                 "Plot something first, or pass dates(ax, data=...)."
             )
 
-    def _nums_to_pos(self, nums: np.ndarray) -> np.ndarray:
-        """Map matplotlib date numbers to axis positions for the current mode."""
-        if self._mode == "collapse":
-            self._require_observations("collapsed positioning")
-        return _coordinates.dates_to_positions(nums, self._nums, self._mode)
-
-    def _pos_to_nums(self, pos: np.ndarray) -> np.ndarray:
-        """Inverse of :meth:`_nums_to_pos`."""
-        if self._mode == "collapse":
-            self._require_observations("collapsed positioning")
-        return _coordinates.positions_to_dates(pos, self._nums, self._mode)
-
     def loc(self, date: Any, *, snap: bool = False, strict: bool = False) -> float:
         """
-        Return the axis position corresponding to a date.
+        Return the native matplotlib data coordinate corresponding to a date.
 
         Parameters
         ----------
@@ -300,7 +286,7 @@ class DateAxis:
         Returns
         -------
         float
-            Position in the active coordinate system.
+            Matplotlib date number accepted by native data-space artists and limits.
 
         Raises
         ------
@@ -311,9 +297,10 @@ class DateAxis:
 
         Notes
         -----
-        This method is the escape hatch for native matplotlib operations in
-        collapsed mode. For example, ``ax.axvline(handle.loc(date))`` remains
-        correct after switching coordinate modes.
+        The returned coordinate is independent of display mode. In collapsed mode,
+        the registered x-scale maps it to an observation position during rendering.
+        Native datetime-like inputs also work directly with matplotlib; ``loc()``
+        remains useful for parsing, snapping, and strict observation lookup.
         """
         ts = to_timestamp(date)
         num = float(mdates.date2num(ts))
@@ -326,30 +313,29 @@ class DateAxis:
         if snap and self._nums.size:
             num = float(self._nums[int(np.argmin(np.abs(self._nums - num)))])
 
-        return float(self._nums_to_pos(np.array([num]))[0])
+        return num
 
     def date_at(self, position: float) -> pd.Timestamp:
         """
-        Return the date corresponding to an axis position.
+        Return the date corresponding to a native matplotlib data coordinate.
 
         Parameters
         ----------
         position : float
-            Position in the active coordinate system.
+            Matplotlib date number, such as an x coordinate obtained from
+            ``transData.inverted()``.
 
         Returns
         -------
         pandas.Timestamp
             Timezone-naive timestamp at ``position``.
         """
-        num = float(self._pos_to_nums(np.array([float(position)]))[0])
-        return pd.Timestamp(mdates.num2date(num)).tz_localize(None)
+        return pd.Timestamp(mdates.num2date(float(position))).tz_localize(None)
 
     def _visible_range(self) -> tuple[pd.Timestamp, pd.Timestamp]:
         lo, hi = self.ax.get_xlim()
-        nums = self._pos_to_nums(np.array([lo, hi], dtype=float))
-        start = pd.Timestamp(mdates.num2date(float(nums[0]))).tz_localize(None)
-        end = pd.Timestamp(mdates.num2date(float(nums[1]))).tz_localize(None)
+        start = pd.Timestamp(mdates.num2date(float(lo))).tz_localize(None)
+        end = pd.Timestamp(mdates.num2date(float(hi))).tz_localize(None)
         return start, end
 
     # ------------------------------------------------------------------
@@ -430,7 +416,7 @@ class DateAxis:
     def _ticks_for(
         self, cadence: _cadence.Cadence, lo: pd.Timestamp, hi: pd.Timestamp
     ) -> tuple[pd.DatetimeIndex, np.ndarray]:
-        """Return label timestamps and axis positions for ``cadence``."""
+        """Return label timestamps and native data coordinates for ``cadence``."""
         if self._mode == "collapse":
             self._require_observations("tick placement")
         return _tick_positions.positions_for_cadence(
@@ -588,8 +574,7 @@ class DateAxis:
         )
 
         nums = mdates.date2num(pd.DatetimeIndex([start_ts, end_ts]))
-        positions = self._nums_to_pos(np.asarray(nums, dtype=float))
-        self.ax.set_xlim(float(positions[0]), float(positions[1]))
+        self.ax.set_xlim(float(nums[0]), float(nums[1]))
         return self._refresh()
 
     def pad(self, left: Any = None, right: Any = None):
@@ -610,8 +595,7 @@ class DateAxis:
         """
         lo, hi = _date_ranges.pad_range(self._visible_range(), left=left, right=right)
         nums = mdates.date2num(pd.DatetimeIndex([lo, hi]))
-        positions = self._nums_to_pos(np.asarray(nums, dtype=float))
-        self.ax.set_xlim(float(positions[0]), float(positions[1]))
+        self.ax.set_xlim(float(nums[0]), float(nums[1]))
         return self._refresh()
 
     # ------------------------------------------------------------------
@@ -634,25 +618,29 @@ class DateAxis:
 
         Notes
         -----
-        Version 0.2 remaps line artists only. Collections such as scatter plots and
-        ``fill_between`` remain unsafe in collapsed mode regardless of whether they are
-        created before or after this call. Keep the axis in ``show`` mode when those
-        collections are present; see the project pitfalls guide.
+        The registered x-scale changes display coordinates without rewriting artist
+        geometry. Native matplotlib lines, collections, and data-space annotations
+        therefore retain their calendar date coordinates.
         """
         if self._mode == "collapse":
             return self
         self._require_observations("collapse()")
 
-        lo, hi = self._visible_range()
-        _mode_lines.remember_calendar_positions(
-            self.ax, self._original_x, self._annotations
-        )
-        self._mode = "collapse"
-
-        _mode_lines.use_collapsed_positions(self.ax, self._original_x, self._nums_to_pos)
-
-        _annotations.replay(self.ax, self._annotations, self.loc)
-        return self.zoom(lo, hi)
+        limits = self.ax.get_xlim()
+        self._refreshing = True
+        try:
+            self._mode = "collapse"
+            _date_scale.register()
+            self.ax.set_xscale(_date_scale.SCALE_NAME, observations=self._nums)
+            self.ax.set_xlim(limits)
+        except Exception:
+            self._mode = "show"
+            self.ax.set_xscale("linear")
+            self.ax.set_xlim(limits)
+            raise
+        finally:
+            self._refreshing = False
+        return self._refresh()
 
     def expand(self):
         """
@@ -665,13 +653,21 @@ class DateAxis:
         """
         if self._mode == "show":
             return self
-        lo, hi = self._visible_range()
-        self._mode = "show"
-
-        _mode_lines.restore_calendar_positions(self.ax, self._original_x)
-
-        _annotations.replay(self.ax, self._annotations, self.loc)
-        return self.zoom(lo, hi)
+        limits = self.ax.get_xlim()
+        self._refreshing = True
+        try:
+            self._mode = "show"
+            self.ax.set_xscale("linear")
+            self.ax.set_xlim(limits)
+        except Exception:
+            self._mode = "collapse"
+            _date_scale.register()
+            self.ax.set_xscale(_date_scale.SCALE_NAME, observations=self._nums)
+            self.ax.set_xlim(limits)
+            raise
+        finally:
+            self._refreshing = False
+        return self._refresh()
 
     # ------------------------------------------------------------------
     # annotation in date space
@@ -825,8 +821,9 @@ class DateAxis:
                 lo, hi = hi, lo
             explicit_positions = None
             if self._explicit_ticks is not None:
-                nums = np.asarray(mdates.date2num(self._explicit_ticks), dtype=float)
-                explicit_positions = self._nums_to_pos(nums)
+                explicit_positions = np.asarray(
+                    mdates.date2num(self._explicit_ticks), dtype=float
+                )
             elif self._mode == "collapse":
                 self._require_observations("tick placement")
 

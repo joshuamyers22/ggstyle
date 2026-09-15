@@ -34,10 +34,13 @@ def test_timezone_policy_does_not_import_matplotlib() -> None:
     assert "from matplotlib" not in source
 
 
-def test_mode_line_adapter_does_not_depend_on_date_axis() -> None:
-    source = Path("src/ggstyle/_mode_lines.py").read_text()
+def test_date_scale_does_not_depend_on_date_axis_or_artist_classes() -> None:
+    source = Path("src/ggstyle/_date_scale.py").read_text()
     assert "from .dates" not in source
     assert "import ggstyle.dates" not in source
+    assert "Line2D" not in source
+    assert "PathCollection" not in source
+    assert "PolyCollection" not in source
 
 
 def test_tick_rendering_adapter_does_not_depend_on_date_axis_policy() -> None:

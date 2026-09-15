@@ -4,22 +4,26 @@ Pitfalls
 This page collects limitations that can otherwise produce plausible but incorrect
 figures, following the prominent pitfalls guidance used by statsmodels.
 
-Native annotations on collapsed axes
-------------------------------------
+Coordinate transforms on collapsed axes
+----------------------------------------
 
-In collapsed mode, the x-axis contains ordinal positions rather than matplotlib date
-numbers. A native ``ax.axvline(timestamp)`` is therefore misplaced. Convert through
-:meth:`ggstyle.DateAxis.loc` or use :meth:`ggstyle.DateAxis.vline`.
+Collapsed mode is a registered matplotlib x-scale. Ordinary ``ax.transData`` artists and
+public blended transforms with an x-data component, including
+``ax.axvline(timestamp)``, pass through that scale. Axes-, figure-, display-, and custom
+transforms do not automatically become date-bearing; use native matplotlib semantics for
+those coordinate systems.
 
-Unsupported artist remapping
-----------------------------
+Collection observation discovery
+--------------------------------
 
-Version 0.2 remaps ``Line2D`` artists when switching coordinate modes. Collections made
-by ``scatter`` and ``fill_between`` are not remapped. Creating a collection before or
-after collapsing is unsafe: existing collections retain matplotlib date numbers, and new
-collections receive date numbers even though the collapsed axis uses observation
-ordinals. Keep the axis in ``show`` mode whenever those collections are present. There is
-currently no supported creation order or automatic collection-remapping workaround.
+Lines, ``scatter`` collections, and ``fill_between`` polygons retain matplotlib date
+numbers and render correctly before or after collapse. Version 0.3 does not yet discover
+observations from a collection-only plot. Supply its complete date sequence explicitly::
+
+   handle = gs.dates(ax, data=dates).collapse()
+
+Without a plotted line or explicit ``data=``, collapse fails rather than selecting an
+accidentally incomplete coordinate map.
 
 Dates between observations
 --------------------------
@@ -64,16 +68,14 @@ then call :func:`ggstyle.sync_dates` again before comparing the panels.
 Known lifecycle limitations
 ---------------------------
 
-The following version 0.2 limitations are covered by strict expected-failure tests while
+The following lifecycle limitations are covered by strict expected-failure tests while
 their contracts are designed for version 0.3:
 
 * calling :func:`ggstyle.dates` without explicit ``data`` does not rescan lines added
   after adoption;
-* a one-observation collapsed axis does not yet provide a consistent inverse mapping;
 * an invalid display timezone can remain stored after the operation raises;
 * ``fmt(minor=False)`` does not disable minor labels after they have been enabled; and
-* externally removing a managed annotation or caption can make later replay or
-  replacement raise.
+* externally removing a managed caption can make later replacement raise.
 
 These are documented constraints, not supported behavior. The tests describe the desired
 safe contracts and must be converted to ordinary passing regressions as each fix lands.

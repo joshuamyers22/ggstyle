@@ -1,6 +1,20 @@
 Release notes
 =============
 
+Unreleased
+----------
+
+Collapsed coordinates now use one registered matplotlib x-scale instead of rewriting
+``Line2D`` data. Lines, ``scatter``, ``fill_between``, and native x-data annotations share
+the same invertible display transform while their calendar geometry and date-number
+limits remain unchanged. Empty registries still reject collapse; a one-observation
+registry now uses one calendar day per ordinal unit in both directions.
+
+``DateAxis.loc()`` now returns a native matplotlib date number in both modes. Code that
+passes its result to matplotlib artists or limits continues to work, while code that
+asserted observation ordinals should instead inspect the axis scale transform. This is a
+deliberate pre-1.0 migration to avoid double-transforming native matplotlib operations.
+
 0.2.0
 -----
 
@@ -25,4 +39,4 @@ The initial public release introduces the standalone date-axis handle, date extr
 common dataframe and array libraries, collapsed observation spacing, date-space
 annotations, and two opt-in matplotlib themes.
 
-See :doc:`pitfalls` for current artist-remapping and timezone limitations.
+See :doc:`pitfalls` for current lifecycle and timezone limitations.
