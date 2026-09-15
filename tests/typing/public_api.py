@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
+from matplotlib.collections import PathCollection, PolyCollection
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter
@@ -124,6 +125,22 @@ def check_line_types(ax: Axes, frame: pd.DataFrame) -> None:
     scale = assert_type(result.scales["color"], gs.AestheticScale)
     assert_type(scale.as_dict(), dict[str, object])
     assert_type(scale.describe(), str)
+
+
+def check_point_and_ribbon_types(ax: Axes, frame: pd.DataFrame) -> None:
+    """Assert concrete native collection result types."""
+    points = assert_type(
+        gs.points(frame, x="date", y="value", color="series", ax=ax),
+        gs.PointResult,
+    )
+    assert_type(points.axes, Axes)
+    assert_type(points.artists, tuple[PathCollection, ...])
+    ribbon = assert_type(
+        gs.ribbon(frame, x="date", lower="low", upper="high", ax=ax),
+        gs.RibbonResult,
+    )
+    assert_type(ribbon.axes, Axes)
+    assert_type(ribbon.artists, tuple[PolyCollection, ...])
 
 
 def check_save_types(figure: Figure, destination: Path) -> None:

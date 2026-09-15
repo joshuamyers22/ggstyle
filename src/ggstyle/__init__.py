@@ -1,7 +1,7 @@
 """ggstyle -- a ggplot2-flavoured plotting layer for Python.
 
 ggstyle combines production-safe collapsed date coordinates with transactional plot
-finishing and a narrow tidy-data line helper. It remains an incremental layer over
+finishing and narrow tidy-data line, point, and ribbon helpers. It remains a layer over
 ordinary Matplotlib rather than a general grammar compiler.
 
     import matplotlib.pyplot as plt
@@ -30,6 +30,8 @@ from .formats import (
 from .formatters import as_formatter
 from .line import LineResult, line
 from .palettes import Palette, available_palettes, palette
+from .points import PointResult, points
+from .ribbon import RibbonResult, ribbon
 from .save import save
 from .scales import AestheticScale, ContinuousScale, DiscreteScale
 from .theme import (
@@ -60,6 +62,8 @@ __all__ = [
     "LineResult",
     "NumericLabeller",
     "Palette",
+    "PointResult",
+    "RibbonResult",
     "ThemeSpec",
     "__version__",
     "as_formatter",
@@ -75,6 +79,8 @@ __all__ = [
     "label_si",
     "line",
     "palette",
+    "points",
+    "ribbon",
     "save",
     "stylesheet",
     "sync_dates",

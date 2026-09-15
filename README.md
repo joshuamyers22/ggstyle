@@ -3,7 +3,7 @@
 Publication finishing and safe date axes for Matplotlib.
 
 **v0.5 development adds narrow semantic helpers to the v0.4 publication-finishing kit.**
-The first is a transactional tidy-data `line()` helper with shared color and linestyle
+Transactional tidy-data `line()`, `points()`, and `ribbon()` helpers share trained color
 mappings. Native Matplotlib axes and artists remain the intended path; ggstyle is not a
 general grammar compiler.
 
@@ -124,8 +124,28 @@ scale also makes numeric codes categorical instead of continuous.
 
 The operation validates and trains before drawing. If artist creation or an existing
 date-axis refresh fails, artists, limits, units, property-cycle position, earlier mapped
-styles, and semantic registry state are restored. Legends and colorbars remain a later
-v0.5 step.
+styles, and semantic registry state are restored.
+
+Points and explicit ribbons reuse the same trained mappings:
+
+```python
+gs.points(df, x="date", y="value", color="series", style={"size": 28}, ax=ax)
+gs.ribbon(
+    intervals,
+    x="date",
+    lower="low",
+    upper="high",
+    color="series",
+    alpha=0.2,
+    ax=ax,
+)
+```
+
+`points()` maps continuous color per observation and returns native `PathCollection`
+artists. `ribbon()` only renders caller-supplied lower/upper columns—it performs no
+statistical inference—and returns native `PolyCollection` artists. Missing ribbon
+coordinates break a band by default; use `missing="drop"` to connect across gaps.
+Legends and colorbars remain a later v0.5 step.
 
 Replace a multi-series line legend with labels at the final visible data points:
 
@@ -406,9 +426,9 @@ from the Matplotlib axes.
 - Unsupported or ambiguous date-bearing artists raise `DateDiscoveryError` during
   preflight. Version 0.4 retains the strict policy and has no permissive warning mode.
 - `.tz()` assumes naive data is UTC when converting for display.
-- `line()` trains color and linestyle mappings, but its scale customization vocabulary,
-  points/ribbons, legends, and colorbars remain later v0.5 work. Numeric color must be
-  constant within a resolved line because one `Line2D` has one color.
+- `line()`, `points()`, and `ribbon()` share color mappings, but automatic legends and
+  colorbars remain later v0.5 work. Numeric color must be constant within a resolved line
+  or ribbon because each native artist has one color; points map color per observation.
 - The current `finish()` surface coordinates plot, subtitle, caption, axis-title,
   numeric-label formatting, safe existing-axes theming, and direct labels for ordinary
   Cartesian `Line2D` series. General label repulsion, scatter endpoint labels, and guide

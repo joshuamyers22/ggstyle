@@ -69,11 +69,54 @@ consistent. Calls sharing a mapping must therefore use the same explicit scale p
 conflicts fail before drawing. An externally removed complete layer is pruned on the next
 mapped call.
 
-The helper performs no aggregation, smoothing, interpolation, guide construction, or
-axes creation. It validates scale and grouping policy before drawing and rolls back
+The helpers perform no aggregation, smoothing, interpolation, guide construction, or
+axes creation. They validate scale and grouping policy before drawing and roll back
 partial artists, axes state, earlier colors/styles, and registry state if rendering or
 date-axis refresh fails. If the axes already has a ggstyle date handle, the handle is
 refreshed automatically, including in collapsed mode.
+
+Semantic points and ribbons
+----------------------------
+
+:func:`ggstyle.points` reuses the line helper's ``x``, ``y``, ``color``, ``group``,
+``color_scale``, and fixed ``style`` vocabulary. Discrete color creates one native
+``PathCollection`` per level; continuous color is mapped independently for every point.
+The helper does not aggregate or jitter observations.
+
+.. code-block:: python
+
+   points = gs.points(
+       frame,
+       x="date",
+       y="value",
+       color="score",
+       style={"marker": "o", "size": 32, "edgecolor": "white"},
+       ax=ax,
+   )
+
+:func:`ggstyle.ribbon` draws caller-provided lower and upper columns with native
+``PolyCollection`` artists. It never computes an interval or synthesizes a legend label.
+Missing coordinates break a ribbon by default; ``missing="drop"`` explicitly connects
+across the gap, while ``missing="raise"`` rejects it. Crossed bounds are allowed unless
+``validate_order=True``.
+
+.. code-block:: python
+
+   band = gs.ribbon(
+       intervals,
+       x="date",
+       lower="low",
+       upper="high",
+       color="series",
+       label="95% interval",
+       alpha=0.2,
+       ax=ax,
+   )
+
+Line, point, and ribbon calls on one axes share trained color state when they map the
+same source-column name. A later automatic-domain expansion transactionally updates all
+earlier managed artists. Continuous ribbon color, like continuous line color, must be
+constant within each resolved group.
 
 .. _plot-finishing:
 

@@ -36,6 +36,9 @@ Matplotlib recipe to ggstyle
    * - Grouped tidy-data lines
      - Frame partitioning, color assignment, and repeated-call consistency
      - ``gs.line(..., color="series", style={...}, ax=ax)``
+   * - Tidy-data points and explicit bands
+     - Scatter partitioning or ``fill_between`` calls with shared color policy
+     - ``gs.points(...)`` and ``gs.ribbon(..., lower=..., upper=...)``
    * - Publication export
      - Figure sizing, metadata, bounds, and overwrite checks
      - ``gs.save(...)``
@@ -64,11 +67,13 @@ Semantic mappings roadmap
 -------------------------
 
 The v0.5 architecture spike selected narrow native helpers over a seaborn objects adapter
-or plotnine wrapper. :func:`ggstyle.line` is the first helper: it draws ordinary
-``Line2D`` artists on a caller-owned ``Axes`` and shares trained aesthetic and date
-registries across calls. Mapped column names and fixed artist style are separate.
+or plotnine wrapper. :func:`ggstyle.line`, :func:`ggstyle.points`, and
+:func:`ggstyle.ribbon` draw ordinary native artists on a caller-owned ``Axes`` and share
+trained aesthetic and date registries across calls. Mapped column names and fixed artist
+style are separate. Ribbons require explicit lower and upper columns and do not infer
+statistics.
 
-Points, ribbons, and automatic guides remain subsequent v0.5 work. Use native Matplotlib
-for unusual artist construction. Seaborn objects can compile a single plot onto an
+Automatic guides remain subsequent v0.5 work. Use native Matplotlib for unusual artist
+construction. Seaborn objects can compile a single plot onto an
 existing axes before ggstyle finishing; plotnine remains the stronger choice when a broad
 grammar and its own facets, scales, themes, and guides are the primary requirement.

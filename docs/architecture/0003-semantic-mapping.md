@@ -200,6 +200,25 @@ not carry an aesthetic name; `color_scale=` or `linestyle_scale=` supplies that 
 This keeps one vocabulary reusable by later point/ribbon renderers while preserving
 context-specific validation for hexadecimal colors and supported line styles.
 
+### Point and ribbon renderer contract (PR19)
+
+The public `points()` helper returns ordinary `PathCollection` artists. Discrete color
+participates in grouping, continuous color maps each retained observation independently,
+and explicit `group` partitions collections without creating a scale. Fixed marker,
+scalar size, and collection properties remain in a separate narrow `style` mapping.
+
+The public `ribbon()` helper accepts explicit `lower` and `upper` columns and returns
+ordinary `PolyCollection` artists. It performs no interval calculation. Missing
+coordinates break bands by default; explicit drop connects across gaps, and explicit
+raise rejects them. Crossed bounds remain renderable unless `validate_order=True`.
+Caller labels are preserved verbatim and are never synthesized from mappings.
+
+Renderer ownership and rollback are shared across all three geometries. Retraining a
+common `(aesthetic, variable)` scale updates existing managed lines, points, and ribbons
+in one transaction, including per-row point face colors. A failure restores those
+properties together with artists, axes state, date state, and the semantic registry.
+Every helper refreshes an existing date handle after drawing, including collapsed mode.
+
 ## Explicit exclusions
 
 Version 0.5 will not add bars, histograms, boxplots, density estimates, smoothing,

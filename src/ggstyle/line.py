@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import warnings
 import weakref
 from collections.abc import Iterable, Mapping, Sequence
-from copy import copy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from numbers import Real
 from types import MappingProxyType
 from typing import Any, Literal, cast
-from weakref import WeakKeyDictionary
 
 import numpy as np
 import pandas as pd
@@ -18,17 +15,26 @@ from matplotlib.axes import Axes
 from matplotlib.lines import Line2D
 
 from ._frames import column
+from ._semantic_artists import (
+    ArtistBinding,
+    ArtistChange,
+    apply_artist_changes,
+    capture_axes,
+    constant_output,
+    date_handle,
+    prepare_artist_changes,
+    renderer_state,
+    restore_axes,
+    rollback_artist_changes,
+    scales_for,
+)
 from ._semantic_registry import (
     MappingAssignment,
     MappingRequest,
     SemanticPlan,
     semantic_registry,
 )
-from ._semantic_scales import (
-    Aesthetic,
-    ContinuousScaleSpec,
-    DiscreteScaleSpec,
-)
+from ._semantic_scales import ContinuousScaleSpec, DiscreteScaleSpec
 from .scales import (
     AestheticScale,
     ContinuousScale,
@@ -89,61 +95,6 @@ class _PreparedLine:
     groups: tuple[_PreparedGroup, ...]
     semantic_plan: SemanticPlan | None
     diagnostics: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class _ArtistBinding:
-    artist: weakref.ReferenceType[Line2D]
-    indices: tuple[int, ...]
-
-
-@dataclass
-class _LineState:
-    next_id: int = 1
-    layers: dict[str, tuple[_ArtistBinding, ...]] = field(default_factory=dict)
-
-    def candidate_id(self) -> str:
-        return f"line-{self.next_id}"
-
-    def detached_layers(self, ax: Axes) -> tuple[str, ...]:
-        detached = []
-        for layer_id, bindings in self.layers.items():
-            artists = [binding.artist() for binding in bindings]
-            if artists and not any(
-                artist is not None and artist.axes is ax and artist in ax.lines
-                for artist in artists
-            ):
-                detached.append(layer_id)
-        return tuple(detached)
-
-
-@dataclass(frozen=True)
-class _AxesSnapshot:
-    lines: tuple[Line2D, ...]
-    data_limits: np.ndarray
-    view_limits: np.ndarray
-    x_converter: object
-    y_converter: object
-    x_units: object
-    y_units: object
-    x_major_locator: object
-    x_major_formatter: object
-    x_minor_locator: object
-    x_minor_formatter: object
-    y_major_locator: object
-    y_major_formatter: object
-    y_minor_locator: object
-    y_minor_formatter: object
-    x_label: str
-    y_label: str
-    ignore_existing_data_limits: bool
-    stale_view_limits: Mapping[str, bool]
-    line_cycle_index: int | None
-    line_property_cycle: object | None
-    stale: bool
-
-
-_LINE_STATES: WeakKeyDictionary[Axes, _LineState] = WeakKeyDictionary()
 
 
 def _text(name: str, value: object) -> str:
@@ -276,22 +227,6 @@ def _assignments(plan: SemanticPlan, layer_id: str) -> dict[str, MappingAssignme
     }
 
 
-def _constant_output(
-    assignment: MappingAssignment,
-    indices: Sequence[int],
-    *,
-    variable: str,
-) -> str:
-    outputs = [assignment.outputs[index] for index in indices]
-    distinct = tuple(dict.fromkeys(outputs))
-    if len(distinct) != 1 or distinct[0] is None:
-        raise ValueError(
-            f"continuous color mapping {variable!r} must be constant within each "
-            "resolved line; supply group= with one color value per group"
-        )
-    return distinct[0]
-
-
 def _ordered_groups(
     row_indices: Sequence[int],
     grouping: Sequence[tuple[str, tuple[object, ...]]],
@@ -379,8 +314,8 @@ def _prepare_groups(
         if color is not None:
             color_assignment = assignments["color"]
             if isinstance(color_spec, ContinuousScaleSpec):
-                properties["color"] = _constant_output(
-                    color_assignment, indices, variable=color
+                properties["color"] = constant_output(
+                    color_assignment, indices, geometry="line"
                 )
             else:
                 output = color_assignment.outputs[indices[0]]
@@ -399,183 +334,6 @@ def _prepare_groups(
             )
         )
     return tuple(prepared), mapped_dropped, missing_groups
-
-
-def _converter(axis: object) -> object:
-    getter = getattr(axis, "get_converter", None)
-    return getter() if callable(getter) else getattr(axis, "converter", None)
-
-
-def _units(axis: object) -> object:
-    getter = getattr(axis, "get_units", None)
-    return getter() if callable(getter) else getattr(axis, "units", None)
-
-
-def _capture_axes(ax: Axes) -> _AxesSnapshot:
-    line_generator = cast(Any, ax)._get_lines
-    property_cycle = getattr(line_generator, "prop_cycler", None)
-    modern_cycle = getattr(line_generator, "_prop_cycle", None)
-    cycle_index = getattr(
-        modern_cycle,
-        "_idx",
-        getattr(line_generator, "_idx", None),
-    )
-    return _AxesSnapshot(
-        tuple(ax.lines),
-        np.asarray(ax.dataLim.get_points()).copy(),
-        np.asarray(ax.viewLim.get_points()).copy(),
-        _converter(ax.xaxis),
-        _converter(ax.yaxis),
-        _units(ax.xaxis),
-        _units(ax.yaxis),
-        ax.xaxis.get_major_locator(),
-        ax.xaxis.get_major_formatter(),
-        ax.xaxis.get_minor_locator(),
-        ax.xaxis.get_minor_formatter(),
-        ax.yaxis.get_major_locator(),
-        ax.yaxis.get_major_formatter(),
-        ax.yaxis.get_minor_locator(),
-        ax.yaxis.get_minor_formatter(),
-        ax.get_xlabel(),
-        ax.get_ylabel(),
-        bool(
-            getattr(
-                ax,
-                "ignore_existing_data_limits",
-                getattr(ax, "_ignore_existing_data_limits", False),
-            )
-        ),
-        dict(getattr(ax, "_stale_viewlims", {})),
-        cycle_index,
-        copy(property_cycle) if property_cycle is not None else None,
-        ax.stale,
-    )
-
-
-def _restore_axis_units(axis: object, converter: object, units: object) -> None:
-    set_converter = getattr(axis, "set_converter", None)
-    if callable(set_converter):
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                "ignore",
-                message="This axis already has a converter set.*",
-                category=UserWarning,
-            )
-            set_converter(converter)
-    else:  # pragma: no cover - Matplotlib 3.7 compatibility fallback
-        cast(Any, axis).converter = converter
-    set_units = getattr(axis, "set_units", None)
-    if callable(set_units):
-        set_units(units)
-    else:  # pragma: no cover - Matplotlib 3.7 compatibility fallback
-        cast(Any, axis).units = units
-
-
-def _restore_axes(ax: Axes, snapshot: _AxesSnapshot) -> None:
-    original = set(snapshot.lines)
-    for artist in tuple(ax.lines):
-        if artist not in original:
-            artist.remove()
-    ax.dataLim.set_points(snapshot.data_limits)
-    ax.viewLim.set_points(snapshot.view_limits)
-    _restore_axis_units(ax.xaxis, snapshot.x_converter, snapshot.x_units)
-    _restore_axis_units(ax.yaxis, snapshot.y_converter, snapshot.y_units)
-    ax.xaxis.set_major_locator(cast(Any, snapshot.x_major_locator))
-    ax.xaxis.set_major_formatter(cast(Any, snapshot.x_major_formatter))
-    ax.xaxis.set_minor_locator(cast(Any, snapshot.x_minor_locator))
-    ax.xaxis.set_minor_formatter(cast(Any, snapshot.x_minor_formatter))
-    ax.yaxis.set_major_locator(cast(Any, snapshot.y_major_locator))
-    ax.yaxis.set_major_formatter(cast(Any, snapshot.y_major_formatter))
-    ax.yaxis.set_minor_locator(cast(Any, snapshot.y_minor_locator))
-    ax.yaxis.set_minor_formatter(cast(Any, snapshot.y_minor_formatter))
-    ax.set_xlabel(snapshot.x_label)
-    ax.set_ylabel(snapshot.y_label)
-    if hasattr(ax, "ignore_existing_data_limits"):
-        cast(Any, ax).ignore_existing_data_limits = snapshot.ignore_existing_data_limits
-    else:  # pragma: no cover - Matplotlib compatibility fallback
-        cast(Any, ax)._ignore_existing_data_limits = (
-            snapshot.ignore_existing_data_limits
-        )
-    if hasattr(ax, "_stale_viewlims"):
-        cast(Any, ax)._stale_viewlims = dict(snapshot.stale_view_limits)
-    line_generator = cast(Any, ax)._get_lines
-    if snapshot.line_cycle_index is not None:
-        modern_cycle = getattr(line_generator, "_prop_cycle", None)
-        if modern_cycle is not None:
-            modern_cycle._idx = snapshot.line_cycle_index
-        else:  # pragma: no cover - Matplotlib compatibility fallback
-            line_generator._idx = snapshot.line_cycle_index
-    if snapshot.line_property_cycle is not None:
-        line_generator.prop_cycler = snapshot.line_property_cycle
-    ax.stale = snapshot.stale
-
-
-def _updated_properties(
-    plan: SemanticPlan, state: _LineState, ax: Axes
-) -> tuple[tuple[Line2D, str, object, str], ...]:
-    changes: list[tuple[Line2D, str, object, str]] = []
-    assignment_index = {
-        (assignment.layer_id, assignment.key.aesthetic): assignment
-        for assignment in plan.assignments
-    }
-    for layer_id, bindings in state.layers.items():
-        for binding in bindings:
-            artist = binding.artist()
-            if artist is None or artist.axes is not ax:
-                continue
-            for aesthetic, getter in cast(
-                tuple[tuple[Aesthetic, Any], ...],
-                (
-                ("color", artist.get_color),
-                ("linestyle", artist.get_linestyle),
-                ),
-            ):
-                assignment = assignment_index.get((layer_id, aesthetic))
-                if assignment is None:
-                    continue
-                output = _constant_output(
-                    assignment, binding.indices, variable=assignment.key.variable
-                )
-                if getter() != output:
-                    changes.append((artist, aesthetic, getter(), output))
-    return tuple(changes)
-
-
-def _apply_updates(changes: Sequence[tuple[Line2D, str, object, str]]) -> None:
-    for artist, aesthetic, _, output in changes:
-        if aesthetic == "color":
-            artist.set_color(output)
-        else:
-            artist.set_linestyle(cast(Any, output))
-
-
-def _rollback_updates(
-    changes: Sequence[tuple[Line2D, str, object, str]]
-) -> None:
-    for artist, aesthetic, value, _ in reversed(changes):
-        if aesthetic == "color":
-            artist.set_color(cast(Any, value))
-        else:
-            artist.set_linestyle(cast(Any, value))
-
-
-def _date_handle(ax: Axes) -> object | None:
-    return getattr(ax, "_ggstyle_date_axis", None)
-
-
-def _scales_for(plan: SemanticPlan | None, layer_id: str) -> Mapping[str, AestheticScale]:
-    if plan is None:
-        return MappingProxyType({})
-    layer_keys = {
-        assignment.key for assignment in plan.assignments if assignment.layer_id == layer_id
-    }
-    return MappingProxyType(
-        {
-            entry.key.aesthetic: cast(AestheticScale, entry.scale)
-            for entry in plan.scales
-            if entry.key in layer_keys
-        }
-    )
 
 
 def line(
@@ -685,9 +443,8 @@ def line(
     names.extend(name for name in (color, group, linestyle) if name is not None)
     selected, values = _extract_columns(data, names)
 
-    existing_state = _LINE_STATES.get(ax)
-    state = existing_state if existing_state is not None else _LineState()
-    layer_id = state.candidate_id()
+    state = renderer_state(ax)
+    layer_id = state.candidate_id("line")
     requests: list[MappingRequest] = []
     color_spec: DiscreteScaleSpec | ContinuousScaleSpec | None = None
     if color is not None:
@@ -744,24 +501,30 @@ def line(
         )
     prepared = _PreparedLine(layer_id, groups, semantic_plan, tuple(diagnostics))
 
-    axes_snapshot = _capture_axes(ax)
-    property_changes: tuple[tuple[Line2D, str, object, str], ...] = ()
+    axes_snapshot = capture_axes(ax)
+    property_changes: tuple[ArtistChange, ...] = ()
     artists: list[Line2D] = []
-    previous_layers = dict(state.layers)
-    previous_next_id = state.next_id
+    state_snapshot = state.snapshot()
 
     def rollback() -> None:
-        _rollback_updates(property_changes)
-        _restore_axes(ax, axes_snapshot)
-        state.layers = previous_layers
-        state.next_id = previous_next_id
+        rollback_artist_changes(property_changes)
+        restore_axes(ax, axes_snapshot)
+        state.restore(state_snapshot)
 
     def apply(plan: SemanticPlan | None) -> LineResult:
         nonlocal property_changes
         if plan is not None:
-            property_changes = _updated_properties(plan, state, ax)
-            _apply_updates(property_changes)
-        bindings: list[_ArtistBinding] = []
+            property_changes = prepare_artist_changes(plan, state, ax)
+            apply_artist_changes(property_changes)
+        bindings: list[ArtistBinding] = []
+        targets = tuple(
+            target
+            for mapped, target in (
+                (color, "line-color"),
+                (linestyle, "line-linestyle"),
+            )
+            if mapped is not None
+        )
         for item in prepared.groups:
             created = ax.plot(
                 cast(Any, item.x),
@@ -772,23 +535,22 @@ def line(
                 raise RuntimeError("Matplotlib returned an unexpected line count")
             artist = created[0]
             artists.append(artist)
-            bindings.append(_ArtistBinding(weakref.ref(artist), item.indices))
-        handle = _date_handle(ax)
+            bindings.append(
+                ArtistBinding(
+                    cast(Any, weakref.ref(artist)),
+                    item.indices,
+                    cast(Any, targets),
+                )
+            )
+        handle = date_handle(ax)
         if handle is not None and artists:
             cast(Any, handle).refresh()
 
-        state.layers = {
-            key: value
-            for key, value in state.layers.items()
-            if key not in state.detached_layers(ax)
-        }
-        state.layers[layer_id] = tuple(bindings)
-        state.next_id += 1
-        _LINE_STATES[ax] = state
+        state.commit_layer(ax, "line", layer_id, bindings)
         return LineResult(
             ax,
             tuple(artists),
-            _scales_for(plan, layer_id),
+            scales_for(plan, layer_id),
             prepared.diagnostics,
             layer_id,
         )

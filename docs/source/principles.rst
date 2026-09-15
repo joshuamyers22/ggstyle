@@ -22,7 +22,7 @@ documented as an axis transformation rather than presented as ordinary calendar 
 Keep calculation separate from rendering
 ----------------------------------------
 
-Future confidence or prediction ribbons will accept caller-provided bounds. ggstyle will
+Confidence or prediction ribbons accept caller-provided bounds. ggstyle does
 not infer whether a band is a confidence interval, choose a statistical model, or compute
 a hypothesis test as a side effect of plotting. Statistical work belongs to libraries
 such as statsmodels and SciPy; ggstyle can present their explicit outputs.

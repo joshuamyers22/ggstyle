@@ -63,6 +63,23 @@ def main() -> None:
             raise RuntimeError("installed wheel returned invalid semantic line objects")
         if semantic.scales["color"].as_dict()["levels"] != ["Median"]:
             raise RuntimeError("installed wheel trained an invalid semantic line scale")
+        points = gs.points(
+            {"date": dates, "value": [1.25, 2.25, 1.75], "series": ["Median"] * 3},
+            x="date",
+            y="value",
+            color="series",
+            color_scale=gs.DiscreteScale(order=("Median",)),
+            ax=ax,
+        )
+        ribbon = gs.ribbon(
+            {"date": dates, "low": [1.0, 2.0, 1.5], "high": [1.5, 2.5, 2.0]},
+            x="date",
+            lower="low",
+            upper="high",
+            ax=ax,
+        )
+        if len(points.artists) != 1 or len(ribbon.artists) != 1:
+            raise RuntimeError("installed wheel returned invalid point or ribbon objects")
         line = semantic.artists[0]
         result = gs.finish(
             ax,

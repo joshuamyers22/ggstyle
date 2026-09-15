@@ -17,6 +17,11 @@ This project follows [Semantic Versioning](https://semver.org/).
   continuous mappings across calls, ordinary `Line2D` results, collapsed-date refresh,
   transactional rollback of artists, axis state, property cycles, and semantic state,
   plus immutable public `DiscreteScale` and `ContinuousScale` configuration.
+- Add public `points()` and `ribbon()` helpers that reuse axes-owned trained color scales,
+  return ordinary `PathCollection` and `PolyCollection` artists, refresh collapsed date
+  axes, and roll back cross-geometry updates atomically. Points support per-observation
+  continuous color; ribbons require explicit bounds, break on missing coordinates by
+  default, optionally validate bound order, and never infer statistics or labels.
 
 ## 0.4.0 - 2026-09-15
 
