@@ -8,6 +8,9 @@ Internal modules are not compatibility guarantees.
 Semantic rendering
 ------------------
 
+.. autoclass:: ggstyle.RenderedResult
+   :members: as_dict, describe
+
 .. autofunction:: ggstyle.line
 
 .. autoclass:: ggstyle.LineResult

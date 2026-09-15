@@ -13,6 +13,8 @@ python -m venv .venv
 .venv/bin/python -m pytest -q --cov=ggstyle --cov-report=term-missing
 .venv/bin/ruff check .
 .venv/bin/mypy
+.venv/bin/python tools/benchmark_registry.py
+.venv/bin/python tools/benchmark_semantic.py
 .venv/bin/python tools/semantic_mapping_spike.py --probe native
 .venv/bin/python tools/validate_docstrings.py
 .venv/bin/python tools/validate_gallery.py
@@ -47,13 +49,14 @@ Semantic-mapping work must follow
 from fixed artist style, train shared scales before drawing, return ordinary Matplotlib
 artists, and preserve the existing-axes and date-correctness hard gates. The executable
 spike is decision evidence, not a production helper implementation. Scale and registry
-foundation modules remain private until real line-layer use proves their public
-vocabulary; renderer transactions must supply artist rollback alongside registry
-rollback.
+internals remain private; the public scale policies and result protocols are the stable
+inspection boundary. Renderer transactions must supply artist rollback alongside
+registry rollback.
 
-Before release-sensitive changes, run `python tools/benchmark_registry.py` and build the
-wheel. CI installs that wheel into an isolated environment and renders a collapsed plot
-with publication finishing through `tools/smoke_wheel.py`. Minimum and newest
+Before release-sensitive changes, run both scripts under `tools/benchmark_*.py` and
+build the wheel. CI installs that wheel into an isolated environment and renders a
+collapsed plot with publication finishing and semantic layers through
+`tools/smoke_wheel.py`. Minimum and newest
 direct-dependency pins are documented in [REPRODUCIBILITY.md](REPRODUCIBILITY.md);
 scheduled prerelease failures are informational, while failures on stable supported
 versions block release.
@@ -63,19 +66,15 @@ By contributing, you agree that your contributions are licensed under the MIT Li
 ## Releasing
 
 Releases use PyPI trusted publishing; maintainers must not store a long-lived PyPI token
-in GitHub. Before the first release, register a pending publisher for project ``ggstyle``
-on PyPI with these values:
+in GitHub. The trusted publisher for project `ggstyle`
+on PyPI uses these values:
 
-- Owner: ``joshuamyers22``
-- Repository: ``ggstyle``
-- Workflow: ``publish.yml``
-- Environment: ``pypi``
-
-Before a v0.4.0 tag, record at least five uncoached pilot sessions using the protocol in
-the usability-evidence documentation. This human approval is required in addition to the
-automated fixture, compatibility, gallery, documentation, package, and visual gates.
+- Owner: `joshuamyers22`
+- Repository: `ggstyle`
+- Workflow: `publish.yml`
+- Environment: `pypi`
 
 After the release commit passes CI, create and push a tag matching the package version,
-for example ``v0.4.0``. The publish workflow independently repeats the test, type,
+for example `v0.5.0`. The publish workflow independently repeats the test, type,
 documentation, and package checks; publishes the distributions to PyPI; and creates the
 GitHub release only after publication succeeds.

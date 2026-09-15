@@ -32,6 +32,7 @@ from .guides import GuideResult, guides
 from .line import LineResult, line
 from .palettes import Palette, available_palettes, palette
 from .points import PointResult, points
+from .results import RenderedResult
 from .ribbon import RibbonResult, ribbon
 from .save import save
 from .scales import AestheticScale, ContinuousScale, DiscreteScale
@@ -65,6 +66,7 @@ __all__ = [
     "NumericLabeller",
     "Palette",
     "PointResult",
+    "RenderedResult",
     "RibbonResult",
     "ThemeSpec",
     "__version__",

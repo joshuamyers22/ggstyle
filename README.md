@@ -2,7 +2,7 @@
 
 Publication finishing and safe date axes for Matplotlib.
 
-**v0.5 development adds narrow semantic helpers to the v0.4 publication-finishing kit.**
+**v0.5 adds narrow semantic helpers to the v0.4 publication-finishing kit.**
 Transactional tidy-data `line()`, `points()`, and `ribbon()` helpers share trained color
 mappings. Native Matplotlib axes and artists remain the intended path; ggstyle is not a
 general grammar compiler.
@@ -158,6 +158,17 @@ title, and ordered levels. Distinct mappings remain distinct. Once activated, ma
 guides refresh transactionally after later semantic-layer calls. Existing caller-owned
 legends and colorbars are preserved; `gs.guides(ax, enabled=False)` removes only guides
 owned by ggstyle.
+
+All four semantic operations return a common runtime-checkable `RenderedResult`:
+
+```python
+payload = result.as_dict()  # bounded strict-JSON-compatible summary
+print(result.describe())    # stable formatted JSON
+```
+
+The summary includes artist counts and types, trained scale descriptions, layer identity,
+and diagnostics without serializing axes or live artists. Concrete results still expose
+their geometry-specific native objects directly.
 
 Replace a multi-series line legend with labels at the final visible data points:
 
@@ -436,7 +447,7 @@ from the Matplotlib axes.
 - Data artists with custom x transforms are rejected during refresh; use `ax.transData`
   because explicit dates cannot make a non-data transform safe.
 - Unsupported or ambiguous date-bearing artists raise `DateDiscoveryError` during
-  preflight. Version 0.4 retains the strict policy and has no permissive warning mode.
+  preflight. Version 0.5 retains the strict policy and has no permissive warning mode.
 - `.tz()` assumes naive data is UTC when converting for display.
 - `line()`, `points()`, and `ribbon()` share mappings, and `guides()` derives legends and
   colorbars from them. Automatic guide placement supports at most four distinct legends

@@ -41,7 +41,8 @@ def _optional_name(value: object) -> None:
 
 @dataclass(frozen=True)
 class DiscreteScale:
-    """Configure a reusable discrete color or linestyle mapping.
+    """
+    Configure a reusable discrete color or linestyle mapping.
 
     Parameters
     ----------
@@ -110,7 +111,8 @@ class DiscreteScale:
 
 @dataclass(frozen=True)
 class ContinuousScale:
-    """Configure a reusable continuous color mapping.
+    """
+    Configure a reusable continuous color mapping.
 
     Parameters
     ----------

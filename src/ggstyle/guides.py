@@ -26,6 +26,7 @@ from ._semantic_scales import (
     TrainedDiscreteScale,
     _is_missing,
 )
+from .results import _describe_result, _guide_payload
 
 __all__ = ["GuideResult", "guides"]
 
@@ -43,7 +44,8 @@ class _GuideSource(Protocol):
 
 @dataclass(frozen=True)
 class GuideResult:
-    """Return native guides managed by :func:`guides`.
+    """
+    Return native guides managed by :func:`guides`.
 
     Parameters
     ----------
@@ -66,6 +68,35 @@ class GuideResult:
         object.__setattr__(self, "legends", tuple(self.legends))
         object.__setattr__(self, "colorbars", tuple(self.colorbars))
         object.__setattr__(self, "diagnostics", tuple(self.diagnostics))
+
+    def as_dict(self) -> dict[str, object]:
+        """
+        Return a bounded, deterministic, JSON-compatible summary.
+
+        Returns
+        -------
+        dict of str to object
+            Fresh containers describing native guide counts, titles, and
+            diagnostics. Live Matplotlib objects are excluded.
+        """
+
+        return _guide_payload(
+            legends=self.legends,
+            colorbars=self.colorbars,
+            diagnostics=self.diagnostics,
+        )
+
+    def describe(self) -> str:
+        """
+        Return the result summary as deterministic strict JSON.
+
+        Returns
+        -------
+        str
+            Strict JSON containing the same values as :meth:`as_dict`.
+        """
+
+        return _describe_result(self.as_dict())
 
 
 @dataclass(frozen=True)
@@ -470,8 +501,24 @@ def _prepare_guide_refresh(
 
 
 def guides(ax: Axes, *, enabled: bool = True) -> GuideResult:
-    """Build native legends and colorbars from an axes' trained mappings.
+    """
+    Build native legends and colorbars from an axes' trained mappings.
 
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Existing caller-owned axes whose complete semantic registry supplies the guides.
+    enabled : bool, default True
+        Build or refresh managed guides. False removes managed guides and disables their
+        automatic refresh without touching caller-owned guides.
+
+    Returns
+    -------
+    GuideResult
+        The original axes, native managed legends and colorbars, and diagnostics.
+
+    Notes
+    -----
     Guide entries, titles, ordering, and colors/styles are derived from the complete
     semantic registry. Compatible color and linestyle mappings for the same variable are
     merged. Distinct variables or titles remain distinct guides. Caller-owned native

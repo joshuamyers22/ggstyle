@@ -115,6 +115,17 @@ Passing ``enabled=False`` removes managed semantic guides without touching nativ
 Automatic layout is capped at four distinct legends and four distinct colorbars on one
 axes. Use facets or explicit Matplotlib guides beyond that boundary.
 
+Semantic frame inputs
+---------------------
+
+Semantic helpers accept named one-dimensional columns from pandas, Polars, and ordinary
+mapping-like frames without mutating the input. Materialize a Polars ``LazyFrame`` with
+``collect()`` first. Duplicate column names, unequal column lengths, and expression-like
+arguments are rejected rather than guessed. Numeric color is continuous by default;
+pass :class:`ggstyle.DiscreteScale` when numeric codes represent categories. A continuous
+color must be constant within each resolved line or ribbon because each native artist has
+one color, while points may vary per observation.
+
 Figure export
 -------------
 

@@ -63,6 +63,10 @@ def main() -> None:
             raise RuntimeError("installed wheel returned invalid semantic line objects")
         if semantic.scales["color"].as_dict()["levels"] != ["Median"]:
             raise RuntimeError("installed wheel trained an invalid semantic line scale")
+        semantic_payload = semantic.as_dict()
+        json.dumps(semantic_payload, allow_nan=False)
+        if json.loads(semantic.describe()) != semantic_payload:
+            raise RuntimeError("installed wheel produced inconsistent result inspection")
         points = gs.points(
             {"date": dates, "value": [1.25, 2.25, 1.75], "series": ["Median"] * 3},
             x="date",
@@ -85,6 +89,8 @@ def main() -> None:
             raise RuntimeError("installed wheel returned invalid semantic guides")
         if semantic_guides.legends[0].get_title().get_text() != "series":
             raise RuntimeError("installed wheel returned an invalid guide title")
+        if json.loads(semantic_guides.describe()) != semantic_guides.as_dict():
+            raise RuntimeError("installed wheel produced inconsistent guide inspection")
         gs.guides(ax, enabled=False)
         line = semantic.artists[0]
         result = gs.finish(

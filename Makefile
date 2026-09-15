@@ -10,10 +10,11 @@ type:
 	uv run mypy
 
 test:
-	uv run python -m pytest -q --cov=ggstyle --cov-report=term-missing
+	MPLBACKEND=Agg uv run python -m pytest -q --cov=ggstyle --cov-report=term-missing
 
 benchmark:
 	uv run python tools/benchmark_registry.py
+	uv run python tools/benchmark_semantic.py
 
 usability:
 	uv run python tools/finishing_usability.py

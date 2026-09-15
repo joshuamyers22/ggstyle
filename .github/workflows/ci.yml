@@ -73,6 +73,7 @@ jobs:
       - run: uv run --no-sync python tools/report_environment.py
       - run: uv run --no-sync python -m pytest -q
       - run: uv run --no-sync python tools/benchmark_registry.py
+      - run: uv run --no-sync python tools/benchmark_semantic.py
 
   prerelease:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'

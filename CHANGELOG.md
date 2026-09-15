@@ -4,6 +4,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.5.0 - 2026-09-15
+
 - Select narrow native line, point, and ribbon helpers for the v0.5 semantic-mapping
   direction through a reproducible three-route scorecard and executable Matplotlib,
   seaborn objects, and plotnine prototypes. Record axes adoption and date correctness as
@@ -27,6 +29,10 @@ This project follows [Semantic Versioning](https://semver.org/).
   mappings merge by variable, title, levels, and missing entry; distinct mappings stay
   separate. Managed guides refresh after later layers, coexist with caller-owned guides,
   and roll back atomically when native guide construction fails.
+- Add a runtime-checkable `RenderedResult` inspection boundary with bounded strict-JSON
+  summaries for semantic layers and guides. Verify pandas/Polars parity, add semantic
+  time and memory guards, publish an executable semantic gallery, and exercise the full
+  v0.5 surface from clean built wheels and supported dependency profiles.
 
 ## 0.4.0 - 2026-09-15
 

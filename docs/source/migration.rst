@@ -48,6 +48,9 @@ Matplotlib recipe to ggstyle
    * - Preflight review
      - Bespoke state inspection
      - ``gs.finish(..., dry_run=True).describe()``
+   * - Render audit metadata
+     - Traverse live artists and scale objects
+     - ``result.as_dict()`` or ``result.describe()``
 
 Which plotting interface?
 -------------------------
@@ -78,6 +81,8 @@ statistics.
 
 Call :func:`ggstyle.guides` to construct native legends and colorbars from the shared
 trained registry. Use native Matplotlib for unusual artist or guide construction.
+All semantic results implement :class:`ggstyle.RenderedResult` for bounded inspection;
+their concrete native artist attributes remain available for customization.
 Seaborn objects can compile a single plot onto an
 existing axes before ggstyle finishing; plotnine remains the stronger choice when a broad
 grammar and its own facets, scales, themes, and guides are the primary requirement.

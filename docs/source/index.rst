@@ -5,9 +5,9 @@ ggstyle documentation
 ``Axes`` and keeps tick placement, label formatting, visible range, grid cadence, and
 date-space annotations independently configurable.
 
-Version 0.4 adds a production finishing kit—coherent labels, pure numeric labellers,
-accessible palettes, parameterized themes, direct endpoint labels, inspectable dry runs,
-and deterministic figure export—to the production-safe date axis introduced in v0.3.
+Version 0.5 adds transactional tidy-data line, point, and ribbon helpers, shared trained
+scales, automatic native guides, and a common inspection boundary to the production
+finishing kit and date axis introduced in v0.4 and v0.3.
 Read :doc:`compatibility` and :doc:`pitfalls` before adopting third-party artists.
 
 Start here
@@ -19,6 +19,7 @@ Start here
    gettingstarted
    user-guide
    gallery
+   semantic-gallery
    inspection
    migration
    usability

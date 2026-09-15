@@ -5,6 +5,25 @@ ggstyle exposes resolved policy as plain data before callers commit a finishing 
 Inspection never draws a canvas, changes artists, installs a layout engine, or mutates
 global Matplotlib settings.
 
+Semantic results
+----------------
+
+:func:`ggstyle.line`, :func:`ggstyle.points`, :func:`ggstyle.ribbon`, and
+:func:`ggstyle.guides` return concrete objects implementing
+:class:`ggstyle.RenderedResult`:
+
+.. code-block:: python
+
+   result = gs.points(data, x="x", y="y", color="score", ax=ax)
+   audit_record = result.as_dict()
+   print(result.describe())
+
+Geometry summaries contain the committed layer identifier, native artist count and type,
+trained scale descriptions, and diagnostics. Guide summaries contain native legend and
+colorbar counts and titles. Both are bounded strict-JSON representations: the original
+axes and live artists remain available on the concrete result but are never serialized.
+Each call returns fresh containers suitable for logs and snapshot tests.
+
 Finishing plans
 ---------------
 

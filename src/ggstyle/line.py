@@ -36,6 +36,7 @@ from ._semantic_registry import (
 )
 from ._semantic_scales import ContinuousScaleSpec, DiscreteScaleSpec
 from .guides import _GuideUpdate, _prepare_guide_refresh
+from .results import _describe_result, _geometry_payload
 from .scales import (
     AestheticScale,
     ContinuousScale,
@@ -53,7 +54,8 @@ _MISSING_GROUP = object()
 
 @dataclass(frozen=True)
 class LineResult:
-    """Return native artists and trained mappings created by :func:`line`.
+    """
+    Return native artists and trained mappings created by :func:`line`.
 
     Parameters
     ----------
@@ -80,6 +82,37 @@ class LineResult:
         object.__setattr__(self, "artists", tuple(self.artists))
         object.__setattr__(self, "scales", MappingProxyType(dict(self.scales)))
         object.__setattr__(self, "diagnostics", tuple(self.diagnostics))
+
+    def as_dict(self) -> dict[str, object]:
+        """
+        Return a bounded, deterministic, JSON-compatible summary.
+
+        Returns
+        -------
+        dict of str to object
+            Fresh containers describing the layer, native artist counts, trained
+            scales, and diagnostics. Live Matplotlib objects are excluded.
+        """
+
+        return _geometry_payload(
+            kind="line",
+            artists=self.artists,
+            scales=self.scales,
+            diagnostics=self.diagnostics,
+            layer_id=self.layer_id,
+        )
+
+    def describe(self) -> str:
+        """
+        Return the result summary as deterministic strict JSON.
+
+        Returns
+        -------
+        str
+            Strict JSON containing the same values as :meth:`as_dict`.
+        """
+
+        return _describe_result(self.as_dict())
 
 
 @dataclass(frozen=True)
@@ -352,7 +385,8 @@ def line(
     sort: SortPolicy = "input",
     group_missing: GroupMissingPolicy = "drop",
 ) -> LineResult:
-    """Draw deterministic grouped lines from named tidy-data columns.
+    """
+    Draw deterministic grouped lines from named tidy-data columns.
 
     Parameters
     ----------

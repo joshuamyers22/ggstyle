@@ -1,6 +1,33 @@
 Release notes
 =============
 
+0.5.0 (2026-09-15)
+------------------
+
+Version 0.5 adds transactional :func:`ggstyle.line`, :func:`ggstyle.points`, and
+:func:`ggstyle.ribbon` helpers for named tidy-data columns on caller-owned axes. Discrete
+color and linestyle plus continuous color mappings train across layers through one weakly
+axes-owned registry. Public immutable scale policies make ordering, missing values,
+limits, infinite values, palettes, and guide titles explicit while retaining ordinary
+Matplotlib artists and existing date-axis behavior.
+
+:func:`ggstyle.guides` derives native legends and colorbars from the complete trained
+registry. Compatible color and linestyle entries merge, distinct mappings coexist, and
+managed guides refresh with later layers without replacing caller-owned guides. Artist,
+scale, guide, date, and axes mutations remain transactional across failed construction
+and refresh paths.
+
+Line, point, ribbon, and guide results now implement
+:class:`ggstyle.RenderedResult`. ``as_dict()`` exposes bounded JSON-compatible audit data
+and ``describe()`` renders the same data as deterministic strict JSON without axes or
+live artists. Concrete results continue to expose their native geometry-specific
+objects.
+
+Release gates verify equivalent pandas and Polars semantics, bounded time and memory for
+representative multi-layer rendering, an executable semantic gallery, clean-wheel
+inspection and rendering, supported Python/dependency profiles, documentation, typing,
+and visual regressions.
+
 0.4.0 (2026-09-15)
 ------------------
 

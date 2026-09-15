@@ -11,6 +11,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_ROOT / "examples"))
 
 from finishing_gallery import render  # noqa: E402
+from semantic_gallery import render as render_semantic  # noqa: E402
 
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
@@ -33,14 +34,14 @@ def main() -> int:
     )
     arguments = parser.parse_args()
     if arguments.write:
-        paths = render(_ROOT / "examples")
+        paths = (*render(_ROOT / "examples"), *render_semantic(_ROOT / "examples"))
         for path in paths:
             _validate(path)
             print(path.relative_to(_ROOT))
         return 0
 
     with tempfile.TemporaryDirectory(prefix="ggstyle-gallery-") as directory:
-        paths = render(Path(directory))
+        paths = (*render(Path(directory)), *render_semantic(Path(directory)))
         for path in paths:
             _validate(path)
     print(f"gallery validation: {len(paths)} executable figures")

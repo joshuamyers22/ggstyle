@@ -1,7 +1,7 @@
 Compatibility contract
 ======================
 
-Version 0.4 supports Python 3.10 through 3.13, Matplotlib 3.7.5 or newer, pandas
+Version 0.5 supports Python 3.10 through 3.13, Matplotlib 3.7.5 or newer, pandas
 2.0 or newer, and NumPy 1.24 or newer. The reproducible floor job uses the final
 Matplotlib 3.7 patch release so the declared minimum includes that minor series' complete
 maintenance fixes.
@@ -44,7 +44,7 @@ Strict diagnostics
 ------------------
 
 Unsupported or ambiguous date-bearing artists raise
-:class:`ggstyle.DateDiscoveryError` during preflight. Version 0.4 retains the strict
+:class:`ggstyle.DateDiscoveryError` during preflight. Version 0.5 retains the strict
 policy and deliberately has no permissive warning mode: a warning could leave a
 plausible-looking but incorrect plot.
 Failure does not commit a registry revision or partially update synchronized axes.

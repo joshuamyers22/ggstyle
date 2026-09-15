@@ -124,6 +124,10 @@ def check_line_types(ax: Axes, frame: pd.DataFrame) -> None:
     )
     assert_type(result.axes, Axes)
     assert_type(result.artists, tuple[Line2D, ...])
+    assert_type(result.as_dict(), dict[str, object])
+    assert_type(result.describe(), str)
+    common: gs.RenderedResult = result
+    assert_type(common.diagnostics, tuple[str, ...])
     scale = assert_type(result.scales["color"], gs.AestheticScale)
     assert_type(scale.as_dict(), dict[str, object])
     assert_type(scale.describe(), str)
@@ -137,12 +141,16 @@ def check_point_and_ribbon_types(ax: Axes, frame: pd.DataFrame) -> None:
     )
     assert_type(points.axes, Axes)
     assert_type(points.artists, tuple[PathCollection, ...])
+    assert_type(points.as_dict(), dict[str, object])
+    assert_type(points.describe(), str)
     ribbon = assert_type(
         gs.ribbon(frame, x="date", lower="low", upper="high", ax=ax),
         gs.RibbonResult,
     )
     assert_type(ribbon.axes, Axes)
     assert_type(ribbon.artists, tuple[PolyCollection, ...])
+    assert_type(ribbon.as_dict(), dict[str, object])
+    assert_type(ribbon.describe(), str)
 
 
 def check_guide_types(ax: Axes) -> None:
@@ -152,6 +160,8 @@ def check_guide_types(ax: Axes) -> None:
     assert_type(result.legends, tuple[Legend, ...])
     assert_type(result.colorbars, tuple[Colorbar, ...])
     assert_type(result.diagnostics, tuple[str, ...])
+    assert_type(result.as_dict(), dict[str, object])
+    assert_type(result.describe(), str)
 
 
 def check_save_types(figure: Figure, destination: Path) -> None:

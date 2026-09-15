@@ -41,6 +41,7 @@ from .line import (
     _sorted_indices,
     _text,
 )
+from .results import _describe_result, _geometry_payload
 from .scales import AestheticScale, ContinuousScale, DiscreteScale
 
 __all__ = ["RibbonResult", "ribbon"]
@@ -50,7 +51,22 @@ RibbonMissingPolicy = Literal["break", "drop", "raise"]
 
 @dataclass(frozen=True)
 class RibbonResult:
-    """Return native ribbon collections and mappings created by :func:`ribbon`."""
+    """
+    Return native ribbon collections and mappings created by :func:`ribbon`.
+
+    Parameters
+    ----------
+    axes : matplotlib.axes.Axes
+        The exact caller-owned axes passed to :func:`ribbon`.
+    artists : tuple of matplotlib.collections.PolyCollection
+        Ordinary Matplotlib ribbon collections, one per resolved segment.
+    scales : mapping of str to AestheticScale
+        Read-only trained scales used by this layer.
+    diagnostics : tuple of str
+        Non-fatal accessibility or dropped-row diagnostics.
+    layer_id : str
+        Stable identifier for this committed semantic layer.
+    """
 
     axes: Axes
     artists: tuple[PolyCollection, ...]
@@ -62,6 +78,37 @@ class RibbonResult:
         object.__setattr__(self, "artists", tuple(self.artists))
         object.__setattr__(self, "scales", MappingProxyType(dict(self.scales)))
         object.__setattr__(self, "diagnostics", tuple(self.diagnostics))
+
+    def as_dict(self) -> dict[str, object]:
+        """
+        Return a bounded, deterministic, JSON-compatible summary.
+
+        Returns
+        -------
+        dict of str to object
+            Fresh containers describing the layer, native artist counts, trained
+            scales, and diagnostics. Live Matplotlib objects are excluded.
+        """
+
+        return _geometry_payload(
+            kind="ribbon",
+            artists=self.artists,
+            scales=self.scales,
+            diagnostics=self.diagnostics,
+            layer_id=self.layer_id,
+        )
+
+    def describe(self) -> str:
+        """
+        Return the result summary as deterministic strict JSON.
+
+        Returns
+        -------
+        str
+            Strict JSON containing the same values as :meth:`as_dict`.
+        """
+
+        return _describe_result(self.as_dict())
 
 
 @dataclass(frozen=True)
@@ -301,8 +348,46 @@ def ribbon(
     group_missing: GroupMissingPolicy = "drop",
     validate_order: bool = False,
 ) -> RibbonResult:
-    """Draw caller-supplied lower/upper bounds as native Matplotlib ribbons.
+    """
+    Draw caller-supplied lower/upper bounds as native Matplotlib ribbons.
 
+    Parameters
+    ----------
+    data : dataframe-like
+        Column-bearing dataframe-like or mapping-like data. Input is never mutated.
+    x, lower, upper : str
+        Required coordinate and bound column names.
+    ax : matplotlib.axes.Axes
+        Existing caller-owned target axes.
+    color : str or None, optional
+        Column mapped to ribbon face color.
+    group : str or None, optional
+        Column partitioning rows into separate ribbons.
+    color_scale : DiscreteScale, ContinuousScale, or None, optional
+        Explicit color policy. Omit for dtype-based inference.
+    style : mapping or None, optional
+        Fixed ``PolyCollection`` properties excluding mapped color, alpha, and label.
+    alpha : float, default 0.2
+        Fixed ribbon opacity between zero and one.
+    label : str or None, optional
+        Verbatim Matplotlib label applied to every resolved ribbon.
+    sort : {"input", "x"}, default "input"
+        Preserve input order within each ribbon or stably sort by x.
+    missing : {"break", "drop", "raise"}, default "break"
+        Break ribbons at missing coordinates, connect across them, or reject them.
+    group_missing : {"drop", "keep", "raise"}, default "drop"
+        Policy for rows with a missing explicit group value.
+    validate_order : bool, default False
+        Reject rows whose lower bound exceeds their upper bound when true.
+
+    Returns
+    -------
+    RibbonResult
+        Original axes, ordinary ``PolyCollection`` artists, trained scales,
+        diagnostics, and the committed layer identifier.
+
+    Notes
+    -----
     The helper performs no statistical inference. Missing coordinates break a ribbon
     by default, while ``missing="drop"`` explicitly connects across gaps. Crossed
     bounds are accepted unless ``validate_order=True``. A caller label is preserved

@@ -16,8 +16,9 @@ informational rather than release-blocking.
 
 The pinned visual profile is separate because renderer updates require explicit image
 review. `make visual` verifies it. `python tools/benchmark_registry.py` guards against
-gross registry-complexity regressions, while the package CI job builds a wheel and runs
-`tools/smoke_wheel.py` from an isolated environment.
+gross date-registry complexity regressions, and `python tools/benchmark_semantic.py`
+checks representative semantic rendering time, peak memory, and scaling. The package CI
+job builds a wheel and runs `tools/smoke_wheel.py` from an isolated environment.
 
 The publication gallery is executable policy documentation rather than a pixel baseline.
 `python tools/validate_gallery.py` renders every published gallery builder into a

@@ -39,6 +39,7 @@ from .line import (
     _optional_text,
     _text,
 )
+from .results import _describe_result, _geometry_payload
 from .scales import AestheticScale, ContinuousScale, DiscreteScale
 
 __all__ = ["PointResult", "points"]
@@ -48,7 +49,8 @@ PointMissingPolicy = Literal["drop", "raise"]
 
 @dataclass(frozen=True)
 class PointResult:
-    """Return native point collections and mappings created by :func:`points`.
+    """
+    Return native point collections and mappings created by :func:`points`.
 
     Parameters
     ----------
@@ -74,6 +76,37 @@ class PointResult:
         object.__setattr__(self, "artists", tuple(self.artists))
         object.__setattr__(self, "scales", MappingProxyType(dict(self.scales)))
         object.__setattr__(self, "diagnostics", tuple(self.diagnostics))
+
+    def as_dict(self) -> dict[str, object]:
+        """
+        Return a bounded, deterministic, JSON-compatible summary.
+
+        Returns
+        -------
+        dict of str to object
+            Fresh containers describing the layer, native artist counts, trained
+            scales, and diagnostics. Live Matplotlib objects are excluded.
+        """
+
+        return _geometry_payload(
+            kind="points",
+            artists=self.artists,
+            scales=self.scales,
+            diagnostics=self.diagnostics,
+            layer_id=self.layer_id,
+        )
+
+    def describe(self) -> str:
+        """
+        Return the result summary as deterministic strict JSON.
+
+        Returns
+        -------
+        str
+            Strict JSON containing the same values as :meth:`as_dict`.
+        """
+
+        return _describe_result(self.as_dict())
 
 
 @dataclass(frozen=True)
@@ -242,7 +275,8 @@ def points(
     missing: PointMissingPolicy = "drop",
     group_missing: GroupMissingPolicy = "drop",
 ) -> PointResult:
-    """Draw mapped points from named tidy-data columns on an existing axes.
+    """
+    Draw mapped points from named tidy-data columns on an existing axes.
 
     Parameters
     ----------
