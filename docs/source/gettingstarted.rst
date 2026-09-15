@@ -54,6 +54,26 @@ Add the plot and axis labels as one validated operation:
 Matplotlib text artists. See :ref:`plot-finishing` for layout, replacement, and dry-run
 behavior.
 
+Save the figure
+---------------
+
+Export requires the figure, destination, and physical dimensions explicitly:
+
+.. code-block:: python
+
+   gs.save(
+       fig,
+       "report.png",
+       width=7,
+       height=4,
+       units="in",
+       dpi=300,
+   )
+
+Existing files are protected unless ``overwrite=True`` is passed. See
+:ref:`figure-export` for bounding, transparency, metadata, deterministic vector output,
+and failure behavior.
+
 Parameterize a theme
 --------------------
 

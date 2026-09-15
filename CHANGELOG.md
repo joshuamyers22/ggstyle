@@ -20,6 +20,9 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Add immutable, validated theme recipes with proportional base sizing, font-family and
   rcParam overrides, a pure resolved-parameter mapping, and transactional safe theming of
   existing axes through `finish()` without restyling data or mutating global `rcParams`.
+- Add publication-safe `save()` with required physical dimensions, unit and format
+  validation, deterministic SVG/PDF metadata, explicit bounding and transparency, atomic
+  overwrite protection, and restoration of figure state after success or failure.
 
 ## 0.3.0 - 2026-09-15
 

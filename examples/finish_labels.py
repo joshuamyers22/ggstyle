@@ -36,7 +36,15 @@ def main() -> None:
             labels=gs.label_currency("$", scale=1_000_000, suffix="M"),
         ),
     )
-    figure.savefig(Path(__file__).with_suffix(".png"), dpi=160)
+    gs.save(
+        figure,
+        Path(__file__).with_suffix(".png"),
+        width=7.2,
+        height=4.2,
+        dpi=160,
+        metadata={"Creator": "ggstyle"},
+        overwrite=True,
+    )
     plt.close(figure)
 
 

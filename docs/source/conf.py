@@ -40,6 +40,7 @@ from ggstyle import (
     label_percent,
     label_si,
     palette,
+    save,
     theme_params,
     theme_spec,
     use_theme,

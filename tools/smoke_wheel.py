@@ -58,10 +58,24 @@ def main() -> None:
         handle = gs.dates(ax).ticks("daily").collapse()
         if not handle.observations.equals(dates):
             raise RuntimeError("installed wheel discovered incorrect observations")
-        with tempfile.NamedTemporaryFile(suffix=".png") as image:
-            figure.savefig(image.name)
-            if Path(image.name).stat().st_size == 0:
+        with tempfile.TemporaryDirectory() as directory:
+            image = Path(directory) / "smoke.png"
+            saved = gs.save(
+                figure,
+                image,
+                width=4,
+                height=3,
+                dpi=100,
+                bbox="standard",
+            )
+            if saved != image or image.stat().st_size == 0:
                 raise RuntimeError("installed wheel rendered an empty image")
+            try:
+                gs.save(figure, image, width=4, height=3)
+            except FileExistsError:
+                pass
+            else:
+                raise RuntimeError("installed wheel overwrote an artifact implicitly")
     finally:
         plt.close(figure)
 

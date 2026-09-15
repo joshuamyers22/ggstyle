@@ -1,8 +1,9 @@
 API reference
 =============
 
-The top-level API contains the date-axis handle, cadence specification, and opt-in theme
-helpers. Internal modules are not compatibility guarantees.
+The top-level API contains date-axis semantics, publication-finishing values, figure
+export, numeric labels, palettes, and opt-in themes. Internal modules are not
+compatibility guarantees.
 
 Plot finishing
 --------------
@@ -17,6 +18,11 @@ Plot finishing
 
 .. autoclass:: ggstyle.FinishResult
    :members:
+
+Figure export
+-------------
+
+.. autofunction:: ggstyle.save
 
 Date axes
 ---------

@@ -46,8 +46,48 @@ text, formatters, managed artists, and layout state. Data artist coordinates, tr
 labels, and colours are never changed.
 
 The coordinator also accepts a theme recipe; see :ref:`parameterized-themes` for the
-existing-axes safety boundary. Legend placement, guide titles, saving options, and
-endpoint labels remain separate planned work rather than unvalidated keyword forwarding.
+existing-axes safety boundary. Saving is deliberately separate through
+:func:`ggstyle.save`; legend placement, guide titles, and endpoint labels remain planned
+work rather than unvalidated keyword forwarding.
+
+.. _figure-export:
+
+Figure export
+-------------
+
+:func:`ggstyle.save` exports an explicit :class:`matplotlib.figure.Figure`. It never
+guesses the current figure, and both output dimensions are required:
+
+.. code-block:: python
+
+   path = gs.save(
+       figure,
+       "report.png",
+       width=7,
+       height=4,
+       units="in",
+       dpi=300,
+       metadata={"Creator": "ggstyle"},
+   )
+
+``units`` accepts inches, centimetres, millimetres, or pixels. Pixel dimensions are
+converted through the explicit DPI even for vector output. The format is inferred from a
+recognized filename extension; an explicit ``format=`` is required when there is no
+extension and must agree with an existing extension.
+
+The default ``bbox="tight"`` crops the nominal canvas to all decorated content with
+0.1-inch padding. Use ``bbox="standard"`` when the final raster or vector canvas must
+retain exactly ``width`` by ``height``. Output is opaque unless ``transparent=True``.
+Metadata keys are backend-specific strings passed through to Matplotlib; SVG and PDF
+timestamps are suppressed unless explicitly supplied, and SVG identifiers use a stable
+salt for repeatable output.
+
+Overwrite is an explicit policy. The default raises :class:`FileExistsError` before
+rendering. With ``overwrite=True``, rendering still occurs in a same-directory temporary
+file and the destination is replaced only after a non-empty artifact succeeds. Render
+failures leave the old destination intact, temporary files are cleaned up, and the
+figure's original physical size and global ``rcParams`` are restored before publication.
+Parent directories are never created implicitly.
 
 Date-axis model
 ---------------

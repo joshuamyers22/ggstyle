@@ -1,10 +1,12 @@
 """Static assertions for the public fluent API shipped with ``py.typed``."""
 
 from collections.abc import Mapping
+from pathlib import Path
 
 import pandas as pd
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
 from typing_extensions import assert_type
 
@@ -76,3 +78,11 @@ def check_finish_types(ax: Axes, dry_run: bool) -> None:
     assert_type(result.plan, gs.FinishPlan)
     assert_type(gs.finish(ax, dry_run=True), gs.FinishPlan)
     assert_type(gs.finish(ax, dry_run=dry_run), gs.FinishPlan | gs.FinishResult)
+
+
+def check_save_types(figure: Figure, destination: Path) -> None:
+    """Assert that saving requires an explicit figure and returns its path."""
+    assert_type(
+        gs.save(figure, destination, width=7, height=4),
+        Path,
+    )

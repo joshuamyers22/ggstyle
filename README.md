@@ -4,9 +4,10 @@ A date axis for matplotlib that is easy to use and easy to manipulate.
 
 **v0.3 adds production-safe collapsed coordinates for native lines, scatter points, and
 fill-between bands.** It also includes the complete built-in ggplot2-inspired theme set.
-The current development API adds pure numeric labellers with an explicit Matplotlib
-adapter plus immutable qualitative, sequential, and diverging palettes. There is no
-`line()` helper yet; native Matplotlib plotting remains the intended path.
+The current development API adds transactional plot finishing, theme recipes, pure
+numeric labellers, immutable qualitative/continuous palettes, and publication-safe
+figure export. There is no `line()` helper yet; native Matplotlib plotting remains the
+intended path.
 
 The date-axis behavior is tested, but the project is still young and follows semantic
 versioning. See the [known limits](#known-limits) before using collapsed mode in
@@ -78,6 +79,33 @@ in place, and `False` removes them. Use `dry_run=True` to validate and inspect t
 operation without mutation. `finish()` never edits data artists or global `rcParams`.
 When a theme is supplied, its diagnostic reports settings such as colour cycles and
 figure size that can only be applied safely before artists or figures are created.
+
+### Save figures
+
+Export an explicit figure with publication-oriented defaults and overwrite protection:
+
+```python
+path = gs.save(
+    fig,
+    "report.png",
+    width=7,
+    height=4,
+    units="in",
+    dpi=300,
+    metadata={"Creator": "ggstyle"},
+)
+```
+
+Both dimensions are required, units may be `in`, `cm`, `mm`, or `px`, and the format is
+inferred from the suffix unless supplied explicitly. Output is opaque and tightly bounded
+by default; use `transparent=True` or `bbox="standard"` explicitly when needed. Tight
+bounds crop the requested canvas to its decorated content, while standard bounds retain
+the exact canvas dimensions.
+
+`save()` refuses to overwrite by default. With `overwrite=True`, it renders to a temporary
+file and replaces the destination only after success. A renderer failure therefore leaves
+an existing file intact, and the figure's original size is restored in every case. SVG IDs
+are stable and variable SVG/PDF timestamps are suppressed by default.
 
 ### Ticks — where they go
 
@@ -316,8 +344,8 @@ from the Matplotlib axes.
   assignment, legends, and colorbars remain ordinary Matplotlib work until semantic
   scales land.
 - The current `finish()` surface coordinates plot, subtitle, caption, axis-title,
-  numeric-label formatting, and safe existing-axes theming. Guide layout, saving, and
-  endpoint labels remain later v0.4 work.
+  numeric-label formatting, and safe existing-axes theming. Guide layout and endpoint
+  labels remain later v0.4 work; filesystem export is intentionally separate in `save()`.
 
 ## Tests
 

@@ -2,8 +2,8 @@
 
 v0.3 makes collapsed date coordinates safe for native lines, scatter collections,
 and fill-between polygons. The development API also provides transactional plot labels,
-pure numeric labellers, accessible palettes, and explicit Matplotlib adapters. No
-``line()`` helper exists yet.
+pure numeric labellers, accessible palettes, publication-safe figure export, and explicit
+Matplotlib adapters. No ``line()`` helper exists yet.
 
     import matplotlib.pyplot as plt
     import ggstyle as gs
@@ -29,6 +29,7 @@ from .formats import (
 )
 from .formatters import as_formatter
 from .palettes import Palette, available_palettes, palette
+from .save import save
 from .theme import (
     DEFAULT_THEME,
     ThemeSpec,
@@ -65,6 +66,7 @@ __all__ = [
     "label_percent",
     "label_si",
     "palette",
+    "save",
     "stylesheet",
     "sync_dates",
     "theme",

@@ -27,6 +27,7 @@ PUBLIC_OBJECTS = (
     "ggstyle.palettes.Palette.sample",
     "ggstyle.palettes.available_palettes",
     "ggstyle.palettes.palette",
+    "ggstyle.save.save",
     "ggstyle.theme.available_themes",
     "ggstyle.theme.stylesheet",
     "ggstyle.theme.theme",
