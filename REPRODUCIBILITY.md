@@ -24,3 +24,25 @@ The publication gallery is executable policy documentation rather than a pixel b
 temporary directory and validates its artifacts; `--write` is the explicit reviewed
 asset-update operation. Pixel-sensitive contracts remain in the separately pinned visual
 suite.
+
+## Semantic-mapping decision spike
+
+ADR 0003 is backed by a dependency-free scorecard and native prototype. The ordinary
+development gate runs:
+
+```bash
+MPLBACKEND=Agg uv run python tools/semantic_mapping_spike.py --probe native
+```
+
+The two rejected integration routes are deliberately not project dependencies. Reproduce
+all three probes in one isolated environment with the versions reviewed by the ADR:
+
+```bash
+MPLBACKEND=Agg uv run --isolated --no-project \
+  --with . --with seaborn==0.13.2 --with plotnine==0.15.8 \
+  python tools/semantic_mapping_spike.py --json --probe all
+```
+
+The command must report verified probes for native Matplotlib, seaborn objects, and
+plotnine without modifying `uv.lock`. Update the ADR, the checked-in version labels, and
+the evidence together if a later decision deliberately re-runs the third-party review.

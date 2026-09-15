@@ -56,3 +56,16 @@ specifications.
 
 Escape hatches remain ordinary Matplotlib operations. ggstyle returns the adopted axes,
 native artists, formatters, and paths instead of proxy objects.
+
+Semantic mappings roadmap
+-------------------------
+
+The v0.5 architecture spike selected narrow native helpers over a seaborn objects adapter
+or plotnine wrapper. Future ``line``, ``points``, and ``ribbon`` helpers will draw ordinary
+Matplotlib artists on a caller-owned ``Axes`` and share ggstyle's trained aesthetic and
+date registries. Mapped column names and fixed artist style will remain separate.
+
+These helpers are not part of v0.4. Use native Matplotlib today when axes adoption and
+ggstyle date semantics are required. Seaborn objects can compile a single plot onto an
+existing axes before ggstyle finishing; plotnine remains the stronger choice when a broad
+grammar and its own facets, scales, themes, and guides are the primary requirement.

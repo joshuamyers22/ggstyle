@@ -13,6 +13,7 @@ python -m venv .venv
 .venv/bin/python -m pytest -q --cov=ggstyle --cov-report=term-missing
 .venv/bin/ruff check .
 .venv/bin/mypy
+.venv/bin/python tools/semantic_mapping_spike.py --probe native
 .venv/bin/python tools/validate_docstrings.py
 .venv/bin/python tools/validate_gallery.py
 .venv/bin/python -m sphinx -W --keep-going -b html docs/source docs/build/html
@@ -40,6 +41,12 @@ Publication-finishing APIs must follow
 must update its canonical fixtures and keep `python tools/finishing_usability.py` above
 the documented code-reduction gate. The fixtures measure API ceremony; they do not
 replace geometry, image, typing, accessibility, or external pilot-user tests.
+
+Semantic-mapping work must follow
+[ADR 0003](docs/architecture/0003-semantic-mapping.md). Keep mapped aesthetics separate
+from fixed artist style, train shared scales before drawing, return ordinary Matplotlib
+artists, and preserve the existing-axes and date-correctness hard gates. The executable
+spike is decision evidence, not a production helper implementation.
 
 Before release-sensitive changes, run `python tools/benchmark_registry.py` and build the
 wheel. CI installs that wheel into an isolated environment and renders a collapsed plot

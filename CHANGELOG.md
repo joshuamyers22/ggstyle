@@ -4,6 +4,11 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Select narrow native line, point, and ribbon helpers for the v0.5 semantic-mapping
+  direction through a reproducible three-route scorecard and executable Matplotlib,
+  seaborn objects, and plotnine prototypes. Record axes adoption and date correctness as
+  hard gates; keep third-party compilers out of ggstyle's dependency graph.
+
 ## 0.4.0 - 2026-09-15
 
 - Select a function-first, transactional architecture for the v0.4 publication-finishing

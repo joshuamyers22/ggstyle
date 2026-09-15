@@ -1,4 +1,4 @@
-.PHONY: sync lint type test benchmark usability gallery visual visual-update docs build check
+.PHONY: sync lint type test benchmark usability mapping-spike gallery visual visual-update docs build check
 
 sync:
 	uv sync --frozen --all-extras
@@ -17,6 +17,9 @@ benchmark:
 
 usability:
 	uv run python tools/finishing_usability.py
+
+mapping-spike:
+	MPLBACKEND=Agg uv run python tools/semantic_mapping_spike.py --probe native
 
 gallery:
 	MPLBACKEND=Agg uv run python tools/validate_gallery.py
@@ -38,4 +41,4 @@ build:
 	uv build
 	uv run twine check dist/*
 
-check: lint type test benchmark usability docs build
+check: lint type test benchmark usability mapping-spike docs build
