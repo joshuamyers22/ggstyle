@@ -9,10 +9,10 @@ Use Python 3.10 or newer:
 
 ```bash
 python -m venv .venv
-.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m pip install -e ".[dev,docs]"
 .venv/bin/python -m pytest -q --cov=ggstyle --cov-report=term-missing
 .venv/bin/ruff check .
-.venv/bin/mypy src
+.venv/bin/mypy
 .venv/bin/python tools/validate_docstrings.py
 .venv/bin/python -m sphinx -W --keep-going -b html docs/source docs/build/html
 ```
@@ -32,6 +32,12 @@ Rendering changes must also follow the
 [visual regression workflow](docs/visual-regression.md); baseline replacements require
 an explanation and review of the generated image diff.
 
+Before release-sensitive changes, run `python tools/benchmark_registry.py` and build the
+wheel. CI installs that wheel into an isolated environment and renders a polygon-only
+collapsed plot through `tools/smoke_wheel.py`. Minimum and newest direct-dependency pins
+are documented in [REPRODUCIBILITY.md](REPRODUCIBILITY.md); scheduled prerelease failures
+are informational, while failures on stable supported versions block release.
+
 By contributing, you agree that your contributions are licensed under the MIT License.
 
 ## Releasing
@@ -46,6 +52,6 @@ on PyPI with these values:
 - Environment: ``pypi``
 
 After the release commit passes CI, create and push a tag matching the package version,
-for example ``v0.1.0``. The publish workflow independently repeats the test, type,
+for example ``v0.3.0``. The publish workflow independently repeats the test, type,
 documentation, and package checks; publishes the distributions to PyPI; and creates the
 GitHub release only after publication succeeds.

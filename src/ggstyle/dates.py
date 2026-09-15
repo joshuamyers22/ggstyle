@@ -407,7 +407,7 @@ class DateAxis:
         at: Iterable[Any] | None = None,
         major: Any = None,
         minor: Any = None,
-    ):
+    ) -> DateAxis:
         """
         Configure tick positions without changing label formatting.
 
@@ -492,7 +492,9 @@ class DateAxis:
     # tick labels
     # ------------------------------------------------------------------
 
-    def fmt(self, spec: Any = None, *, major: Any = None, minor: Any = _UNSET):
+    def fmt(
+        self, spec: Any = None, *, major: Any = None, minor: Any = _UNSET
+    ) -> DateAxis:
         """
         Configure tick labels without moving ticks.
 
@@ -540,7 +542,7 @@ class DateAxis:
             self._refresh()
             raise
 
-    def rotate(self, degrees: float = 45, *, ha: str | None = None):
+    def rotate(self, degrees: float = 45, *, ha: str | None = None) -> DateAxis:
         """
         Rotate major tick labels.
 
@@ -579,7 +581,7 @@ class DateAxis:
             self._refresh()
             raise
 
-    def tz(self, zone: str | None):
+    def tz(self, zone: str | None) -> DateAxis:
         """
         Set the display timezone used for labels.
 
@@ -618,7 +620,7 @@ class DateAxis:
         *,
         last: Any = None,
         ytd: bool = False,
-    ):
+    ) -> DateAxis:
         """
         Set the visible date range.
 
@@ -667,7 +669,7 @@ class DateAxis:
         self.ax.set_xlim(float(nums[0]), float(nums[1]))
         return self._refresh()
 
-    def pad(self, left: Any = None, right: Any = None):
+    def pad(self, left: Any = None, right: Any = None) -> DateAxis:
         """
         Extend the visible range without changing artist data.
 
@@ -692,7 +694,7 @@ class DateAxis:
     # gaps
     # ------------------------------------------------------------------
 
-    def collapse(self):
+    def collapse(self) -> DateAxis:
         """
         Switch to observation-ordinal coordinates.
 
@@ -732,7 +734,7 @@ class DateAxis:
             self._refreshing = False
         return self._refresh()
 
-    def expand(self):
+    def expand(self) -> DateAxis:
         """
         Switch to calendar coordinates and restore gaps.
 
@@ -773,8 +775,9 @@ class DateAxis:
             if artist.axes is self.ax
         )
 
-    def clear_annotations(self):
-        """Remove all ggstyle-managed date annotations from this axes.
+    def clear_annotations(self) -> DateAxis:
+        """
+        Remove all ggstyle-managed date annotations from this axes.
 
         Returns
         -------
@@ -794,7 +797,9 @@ class DateAxis:
             raise
         self._annotations.append(annotation)
 
-    def vline(self, date: Any, label: str | None = None, **kwargs):
+    def vline(
+        self, date: Any, label: str | None = None, **kwargs: Any
+    ) -> DateAxis:
         """
         Draw a vertical line in date coordinates.
 
@@ -816,7 +821,13 @@ class DateAxis:
         self._add_annotation(_annotations.Annotation("vline", (date,), label, kwargs))
         return self
 
-    def span(self, start: Any, end: Any, label: str | None = None, **kwargs):
+    def span(
+        self,
+        start: Any,
+        end: Any,
+        label: str | None = None,
+        **kwargs: Any,
+    ) -> DateAxis:
         """
         Draw a shaded region in date coordinates.
 
@@ -848,8 +859,8 @@ class DateAxis:
         start: str = "start",
         end: str = "end",
         label: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> DateAxis:
         """
         Draw multiple shaded regions from an event table.
 
@@ -900,7 +911,7 @@ class DateAxis:
     # gridlines, at their own cadence
     # ------------------------------------------------------------------
 
-    def grid(self, spec: Any = None, **kwargs):
+    def grid(self, spec: Any = None, **kwargs: Any) -> DateAxis:
         """
         Configure gridlines independently of ticks.
 
@@ -954,8 +965,9 @@ class DateAxis:
         if not self._refreshing:
             self._refresh()
 
-    def refresh(self):
-        """Rescan live data artists and publish one shared registry revision.
+    def refresh(self) -> DateAxis:
+        """
+        Rescan live data artists and publish one shared registry revision.
 
         Synchronized handles refresh as a group. Existing date-number limits are
         preserved even when new observations change collapsed display positions.
@@ -1020,7 +1032,8 @@ class DateAxis:
         return self
 
     def dispose(self) -> None:
-        """Disconnect callbacks and release registry and managed-artist references.
+        """
+        Disconnect callbacks and release registry and managed-artist references.
 
         Existing Matplotlib artists remain on the axes; ggstyle simply stops managing
         them. Calling this method repeatedly is safe.
@@ -1093,7 +1106,7 @@ class DateAxis:
         )
         self._draw_grid(lo, hi)
 
-    def _refresh(self):
+    def _refresh(self) -> DateAxis:
         """Recompute ticks and labels from the current limits.
 
         Called by every mutating method and on interactive pan/zoom, so the axis

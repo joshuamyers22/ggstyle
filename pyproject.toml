@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ggstyle"
-version = "0.2.0"
+version = "0.3.0"
 description = "A date axis for matplotlib that is easy to use and manipulate"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
-    "matplotlib>=3.7",
+    "matplotlib>=3.7.5",
     "pandas>=2.0",
     "numpy>=1.24",
 ]
@@ -38,7 +38,17 @@ Changelog = "https://github.com/joshuamyers22/ggstyle/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 # polars is a *test* dependency only. Frame support is duck-typed, so
 # installing ggstyle never pulls polars in.
-dev = ["pytest>=7.0", "pytest-cov", "ruff", "mypy", "pandas-stubs", "polars>=1.0", "build", "twine"]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "pandas-stubs",
+    "polars>=1.0",
+    "build",
+    "twine",
+    "typing-extensions",
+]
 polars = ["polars>=1.0"]
 docs = ["sphinx>=7", "numpydoc>=1.6", "pydata-sphinx-theme>=0.15"]
 
@@ -56,6 +66,7 @@ packages = ["src/ggstyle"]
 
 [tool.hatch.build.targets.sdist]
 include = [
+    "/.github/constraints",
     "/src",
     "/tests",
     "/tools",
@@ -67,6 +78,7 @@ include = [
     "/LICENSE",
     "/CHANGELOG.md",
     "/CONTRIBUTING.md",
+    "/REPRODUCIBILITY.md",
     "/SECURITY.md",
 ]
 
@@ -93,7 +105,7 @@ target-version = "py310"
 select = ["B", "C4", "E", "F", "I", "PERF", "PIE", "RET", "RUF", "SIM", "UP", "W"]
 
 [tool.mypy]
-files = ["src"]
+files = ["src", "tests/typing"]
 # Not strict yet: the matplotlib artist APIs this leans on are loosely typed.
 # Tighten module by module rather than shipping a config that does not pass.
 check_untyped_defs = true

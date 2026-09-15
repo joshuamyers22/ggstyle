@@ -21,8 +21,8 @@ geometry; its cases now live as production regressions in `tests/test_date_scale
 
 ## Decision
 
-The production collapsed-coordinate engine will be a registered Matplotlib
-`ScaleBase`. Artist-specific mutation adapters will not be a second coordinate
+The production collapsed-coordinate engine is a registered Matplotlib
+`ScaleBase`. Artist-specific mutation adapters are not a second coordinate
 architecture. Discovery adapters may inspect artists to build provenance and
 diagnostics, but they must not rewrite their geometry.
 
@@ -66,7 +66,7 @@ and requires a migration note in the implementation PR.
 ## Observation provenance
 
 The observation registry is an owned, revisioned object. Each contribution records
-its source: explicit input, a supported artist, or a registered third-party source.
+its source as explicit input or a supported native artist.
 Its effective observations are the sorted unique union of live contributions.
 
 - Dates passed explicitly to `gs.dates(ax, data=...)` are sticky. Repeated calls add
@@ -81,9 +81,9 @@ Its effective observations are the sorted unique union of live contributions.
   replace their prior contribution on that rebuild.
 - ggstyle-managed annotations, ticks, grids, captions, and other decorations never
   contribute observations.
-- A third-party artist contributes only through a registered discovery protocol or
-  explicit data. An unrecognized date-bearing artist is unsupported, not silently
-  ignored.
+- Third-party collection adapters are not public in v0.3. An unrecognized date-bearing
+  artist is unsupported, not silently ignored; explicit dates do not make an unsupported
+  transform safe.
 
 Registry rebuilds may shrink the effective union when a contributing artist is
 removed or mutated. Explicit contributions do not shrink as a side effect of artist
@@ -96,23 +96,23 @@ axes. The supported transform boundary is:
 
 - ordinary `ax.transData`;
 - public blended transforms whose x branch is the owning axes' data transform,
-  including the transform used by `axvline`; and
-- explicitly registered third-party transforms with equivalent x-data semantics.
+  including the transform used by `axvline` for rendering. Blended-transform
+  presentation artists do not contribute observations.
 
 Axes-, figure-, display-, or otherwise arbitrary transforms do not contain date
 observations. An artist that appears date-bearing but uses an unsupported transform
 fails preflight.
 
-With the scale architecture, artists added with datetime-like original x values are
+With the scale architecture, supported artists added with datetime-like original x values are
 safe before or after collapse: Matplotlib unit conversion supplies date numbers and
 the scale supplies display positions. Raw numeric x values are ambiguous. They are
-accepted as dates only when registered explicitly with `coordinate_space="date"`;
-numeric ordinal input is not inferred. A refresh must reject an ambiguous candidate
-instead of guessing.
+accepted from lines only when the complete dates supplied through `dates(ax, data=...)`
+cover them; numeric ordinal input is not inferred. A refresh rejects an ambiguous
+candidate instead of guessing.
 
 ## Refresh lifecycle
 
-The public refresh operation will perform one transaction in this order:
+The public refresh operation performs one transaction in this order:
 
 1. rescan supported artists on every live axes in the registry group;
 2. discover provenance and validate transforms and coordinate spaces;
@@ -132,17 +132,17 @@ restored before the exception escapes. Re-entrant callbacks are guarded.
 
 ## Synchronization and ownership
 
-`sync_dates()` will attach its handles to one shared registry object, not copy a
+`sync_dates()` attaches its handles to one shared registry object rather than copying a
 union into independent arrays. Refreshing any member rescans all live member axes,
 commits one new revision, invalidates all member scale transforms, and redraws all
 members. A registry change may move artists on every synchronized axes; their date
 limits remain unchanged unless the caller explicitly requests a new union or
 intersection view.
 
-The registry holds axes and handles weakly. Removing or disposing an axes releases
-its artist contributions on the next rebuild and disconnects callbacks. Detaching a
-live handle gives it an independent snapshot; it does not mutate the remaining
-group. Disposal is idempotent and managed artists already removed externally are
+The registry holds member handles weakly; each live handle owns its Matplotlib axes.
+Disposing a handle detaches it, releases registry and managed-artist references, and
+disconnects callbacks. The remaining group is unchanged and excludes that axes on its
+next refresh. Disposal is idempotent and managed artists already removed externally are
 treated as absent.
 
 ## Discovery and diagnostics
@@ -152,11 +152,10 @@ Discovery traverses supported data artists owned by each axes (`lines` and
 containers as additional sources, and it excludes managed decorations and artists
 whose x transform is not data-bearing. Visibility does not alter traversal.
 
-The default policy for an ambiguous or unsupported date-bearing artist is a
-dedicated ggstyle exception raised during preflight, with the artist class, owning
-axes, unsupported transform or coordinate space, and a corrective action. A future
-permissive option may emit one deduplicated, filterable ggstyle warning per artist
-class. Such a warning reports reduced guarantees; it never claims safe collapse.
+The v0.3 policy for an ambiguous or unsupported date-bearing artist is a
+dedicated ggstyle exception raised during preflight, with the artist class where
+available, the unsupported transform or coordinate space, and a corrective action.
+There is no permissive warning mode in v0.3.
 
 ## Configuration and managed artists
 
@@ -169,16 +168,16 @@ distinguish:
 - `False` or an explicit disable sentinel: remove the feature.
 
 Invalid timezone, formatter, cadence, range, alignment, grid, or annotation input
-leaves the last valid configuration usable. Managed artists have stable handles or
-public enumeration/update/removal operations. Replay and disposal tolerate external
-artist removal, disconnect callbacks, and release registry references.
+leaves the last valid configuration usable. Managed annotations have public enumeration
+and bulk-removal operations. Replay and disposal tolerate external artist removal,
+disconnect callbacks, and release registry references.
 
 ## Consequences
 
 The scale applies one mapping uniformly to current and future Matplotlib artists,
 keeps original calendar geometry authoritative, and removes the need for ID-keyed
 restoration snapshots. Collections no longer need bespoke vertex or offset
-remapping. The implementation must, however, install the scale before rebuilding
+remapping. The implementation installs the scale before rebuilding
 ggstyle locators and formatters because `set_xscale()` may replace them, and registry
 changes must install or invalidate an immutable transform snapshot transactionally.
 

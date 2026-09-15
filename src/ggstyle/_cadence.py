@@ -291,7 +291,7 @@ def periods_between(
     floor = _FLOOR_ALIAS.get(cadence.unit)
     if floor is not None:
         start = start.floor(floor)
-    return pd.date_range(start=start, end=hi + pad, freq=cadence.freq)
+    return pd.date_range(start=start, end=hi + pad, freq=to_offset(cadence.freq))
 
 
 def _iter_units() -> Iterable[str]:  # pragma: no cover - introspection helper

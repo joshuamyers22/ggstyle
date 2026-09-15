@@ -843,7 +843,7 @@ wheels = [
 
 [[package]]
 name = "ggstyle"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -866,6 +866,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "ruff" },
     { name = "twine" },
+    { name = "typing-extensions" },
 ]
 docs = [
     { name = "numpydoc" },
@@ -891,7 +892,7 @@ visual = [
 [package.metadata]
 requires-dist = [
     { name = "build", marker = "extra == 'dev'" },
-    { name = "matplotlib", specifier = ">=3.7" },
+    { name = "matplotlib", specifier = ">=3.7.5" },
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "numpy", specifier = ">=1.24" },
     { name = "numpydoc", marker = "extra == 'docs'", specifier = ">=1.6" },
@@ -905,6 +906,7 @@ requires-dist = [
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7" },
     { name = "twine", marker = "extra == 'dev'" },
+    { name = "typing-extensions", marker = "extra == 'dev'" },
 ]
 provides-extras = ["dev", "polars", "docs"]
 

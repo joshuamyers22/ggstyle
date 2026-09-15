@@ -8,6 +8,7 @@ PUBLIC_OBJECTS = (
     "ggstyle._cadence.Cadence",
     "ggstyle.dates.AxisSummary",
     "ggstyle.dates.DateAxis",
+    "ggstyle.dates.DateDiscoveryError",
     "ggstyle.dates.dates",
     "ggstyle.dates.sync_dates",
     "ggstyle.theme.available_themes",
@@ -17,15 +18,18 @@ PUBLIC_OBJECTS = (
 )
 
 DATE_AXIS_METHODS = (
+    "clear_annotations",
     "collapse",
     "caption",
     "date_at",
+    "dispose",
     "expand",
     "fmt",
     "grid",
     "loc",
     "pad",
     "rotate",
+    "refresh",
     "span",
     "spans",
     "summary",

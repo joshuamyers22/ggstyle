@@ -80,6 +80,10 @@ scatter collection using a custom x transform is rejected with
 axes coordinates are dates. Native ``axvline`` blended transforms and ggstyle-managed
 annotations and grids are presentation elements and do not contribute observations.
 
+Native ``fill_between`` polygons are also discovered when their vertices use
+``ax.transData``. Arbitrary third-party collection subclasses are not accepted. Version
+0.3 uses strict exceptions only and has no permissive warning mode.
+
 Raw numeric coordinates on an axes whose date converter was installed by another artist
 remain inherently ambiguous. Supply complete explicit ``data=`` whenever numeric values
 are intended to represent date numbers.

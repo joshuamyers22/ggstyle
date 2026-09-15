@@ -1,0 +1,4 @@
+# Newest stable direct dependencies verified for v0.3 on 2026-09-15.
+matplotlib==3.11.2
+numpy==2.5.3
+pandas==3.0.5

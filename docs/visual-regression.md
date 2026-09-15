@@ -53,6 +53,7 @@ expected. Reviewers should reject broad or unexplained snapshot churn even when 
 comparisons pass afterward.
 
 Canonical baselines live in `tests/baseline_images`. The initial set covers expanded and
-collapsed irregular lines, date annotations and spans, synchronized panels with distinct
-observations, and a gallery of all nine themes. Future collection support adds its own
-geometry assertion and focused baseline rather than enlarging an unrelated image.
+collapsed irregular lines, a fill-between band with an internal gap, date annotations and
+spans, synchronized panels with distinct observations, and a gallery of all nine themes.
+Each collection baseline includes its own geometry assertions rather than relying on pixels
+alone.

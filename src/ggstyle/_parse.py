@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
-from typing import Any
+from typing import Any, overload
 
 import pandas as pd
 from pandas.tseries.frequencies import to_offset as _pd_to_offset
+from pandas.tseries.offsets import BaseOffset
 
 __all__ = ["is_date_like", "normalize_alias", "to_offset", "to_timestamp"]
 
@@ -34,6 +35,20 @@ _LEGACY = {
     "L": "ms",
     "U": "us",
     "N": "ns",
+}
+
+# Modern alias -> spelling understood by pandas 2.0. The public normalization helper
+# stays modern; this reverse map is used only as a parser fallback.
+_PANDAS_2 = {
+    "ME": "M",
+    "QE": "Q",
+    "YE": "Y",
+    "h": "H",
+    "min": "T",
+    "s": "S",
+    "ms": "L",
+    "us": "U",
+    "ns": "N",
 }
 
 _OFFSET_RE = re.compile(r"^\s*([+-]?\d*)\s*([A-Za-z]+)\s*(.*)$")
@@ -55,22 +70,50 @@ def normalize_alias(alias: str) -> str:
     return f"{count}{letters}{suffix}"
 
 
-def to_offset(value: Any):
+def _pandas_2_alias(alias: str) -> str:
+    match = _OFFSET_RE.match(alias)
+    if match is None:
+        return alias
+    count, letters, suffix = match.groups()
+    letters = _PANDAS_2.get(letters, letters)
+    return f"{count}{letters}{suffix}"
+
+
+@overload
+def to_offset(value: None) -> None: ...
+
+
+@overload
+def to_offset(value: object) -> BaseOffset: ...
+
+
+def to_offset(value: Any) -> BaseOffset | None:
     """Convert to a pandas offset, accepting legacy aliases.
 
     Tries the string as given first so that anything pandas already understands
-    keeps working untouched; only falls back to normalization on failure.
+    keeps working untouched. It then tries the modern spelling and, for pandas 2.0,
+    the equivalent legacy spelling.
     """
     if value is None:
         return None
     if isinstance(value, str):
         normalized = normalize_alias(value)
+        legacy = _pandas_2_alias(normalized)
         try:
-            return _pd_to_offset(normalized)
-        except ValueError:
-            # Preserve pandas' own error for aliases our compatibility map does
-            # not recognize.
             return _pd_to_offset(value)
+        except ValueError as error:
+            first_error = error
+        if normalized != value:
+            try:
+                return _pd_to_offset(normalized)
+            except ValueError:
+                pass
+        if legacy not in (value, normalized):
+            try:
+                return _pd_to_offset(legacy)
+            except ValueError:
+                pass
+        raise first_error
     return _pd_to_offset(value)
 
 

@@ -1,4 +1,4 @@
-.PHONY: sync lint type test visual visual-update docs build check
+.PHONY: sync lint type test benchmark visual visual-update docs build check
 
 sync:
 	uv sync --frozen --all-extras
@@ -7,10 +7,13 @@ lint:
 	uv run ruff check .
 
 type:
-	uv run mypy src
+	uv run mypy
 
 test:
 	uv run pytest -q --cov=ggstyle --cov-report=term-missing
+
+benchmark:
+	uv run python tools/benchmark_registry.py
 
 visual:
 	LANG=C LC_ALL=C TZ=UTC MPLBACKEND=Agg GGSTYLE_RUN_VISUAL=1 uv run --frozen --group visual pytest -q tests/test_visual_regressions.py
@@ -26,4 +29,4 @@ build:
 	uv build
 	uv run twine check dist/*
 
-check: lint type test docs build
+check: lint type test benchmark docs build

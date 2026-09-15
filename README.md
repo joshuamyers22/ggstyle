@@ -2,8 +2,9 @@
 
 A date axis for matplotlib that is easy to use and easy to manipulate.
 
-**v0.2 is the date axis plus the complete built-in ggplot2-inspired theme set.** No
-palettes module and no `line()` yet — those remain future additions once the axis
+**v0.3 adds production-safe collapsed coordinates for native lines, scatter points, and
+fill-between bands.** It also includes the complete built-in ggplot2-inspired theme set.
+No palettes module and no `line()` yet—those remain future additions once the axis
 ergonomics have real usage behind them.
 
 The date-axis behavior is tested, but the project is still young and follows semantic
@@ -222,7 +223,9 @@ from the Matplotlib axes.
   Matplotlib does not retain the source x array for `step="mid"`, that form still requires
   the complete dates through `gs.dates(ax, data=dates)`.
 - Data artists with custom x transforms are rejected during refresh; use `ax.transData`
-  or provide the complete observation registry explicitly.
+  because explicit dates cannot make a non-data transform safe.
+- Unsupported or ambiguous date-bearing artists raise `DateDiscoveryError` during
+  preflight. Version 0.3 has no permissive warning mode.
 - `.tz()` assumes naive data is UTC when converting for display.
 - No palettes module yet: the colour cycle lives in the stylesheets.
 
@@ -231,7 +234,7 @@ from the Matplotlib axes.
 ```bash
 python -m pytest -q
 ruff check .
-mypy src
+mypy
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete development workflow and

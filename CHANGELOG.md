@@ -4,6 +4,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+## 0.3.0 - 2026-09-15
+
 - Replace line-specific coordinate mutation with an invertible registered matplotlib
   scale used uniformly by lines, `scatter`, `fill_between`, native x-data annotations,
   limits, autoscaling, and shared axes.
@@ -25,6 +27,13 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Fix invalid-timezone configuration poisoning, `fmt(minor=False)`, and replacement of
   externally removed captions. Add annotation artist enumeration and safe bulk removal.
   All former v0.2 safety-gap expected failures now pass.
+- Preserve concrete `DateAxis` return types across fluent calls and verify them from a
+  downstream typed module.
+- Add blocking minimum/newest dependency profiles, representative macOS and Windows jobs,
+  a bounded registry benchmark, and a clean-wheel headless rendering smoke test. Scheduled
+  dependency-prerelease results are informational.
+- Support legacy and modern pandas offset aliases across the declared pandas 2.x and 3.x
+  range.
 
 ## 0.2.0 - 2026-09-13
 

@@ -1,8 +1,8 @@
 Release notes
 =============
 
-Unreleased
-----------
+0.3.0 (2026-09-15)
+------------------
 
 Collapsed coordinates now use one registered matplotlib x-scale instead of rewriting
 ``Line2D`` data. Lines, ``scatter``, ``fill_between``, and native x-data annotations share
@@ -29,6 +29,13 @@ rejected on an x-date handle.
 :meth:`ggstyle.DateAxis.dispose` disconnects callbacks and weak registry ownership while
 leaving Matplotlib artists in place. Failed timezone, formatter, caption, discovery, and
 shared-registry operations retain the previous valid state.
+
+Public fluent methods now retain :class:`ggstyle.DateAxis` in downstream type checking.
+Release CI covers Python 3.10 through 3.13, representative Linux/macOS/Windows jobs,
+reproducible minimum and newest-stable dependency profiles, the pinned pixel renderer,
+registry performance, and a headless plot imported from the built wheel. Offset parsing
+accepts both legacy and modern pandas frequency spellings across the supported pandas
+2.x and 3.x families.
 
 0.2.0
 -----
