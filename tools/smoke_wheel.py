@@ -44,7 +44,26 @@ def main() -> None:
     figure, ax = plt.subplots()
     try:
         ax.fill_between(dates, [1.0, 2.0, 1.5], [1.5, 2.5, 2.0])
-        line = ax.plot(dates, [1.25, 2.25, 1.75], label="Median")[0]
+        semantic = gs.line(
+            pd.DataFrame(
+                {
+                    "date": dates,
+                    "value": [1.25, 2.25, 1.75],
+                    "series": ["Median"] * 3,
+                }
+            ),
+            x="date",
+            y="value",
+            color="series",
+            color_scale=gs.DiscreteScale(order=("Median",)),
+            style={"label": "Median"},
+            ax=ax,
+        )
+        if semantic.axes is not ax or len(semantic.artists) != 1:
+            raise RuntimeError("installed wheel returned invalid semantic line objects")
+        if semantic.scales["color"].as_dict()["levels"] != ["Median"]:
+            raise RuntimeError("installed wheel trained an invalid semantic line scale")
+        line = semantic.artists[0]
         result = gs.finish(
             ax,
             title="Installed wheel",

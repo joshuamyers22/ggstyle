@@ -60,6 +60,7 @@ def test_each_axes_owns_one_weak_semantic_registry() -> None:
 
 
 def test_registry_does_not_keep_axes_alive() -> None:
+    gc.collect()
     baseline = registry_count()
     figure, ax = plt.subplots()
     semantic_registry(ax)

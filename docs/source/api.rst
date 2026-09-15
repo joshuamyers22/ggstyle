@@ -1,9 +1,24 @@
 API reference
 =============
 
-The top-level API contains date-axis semantics, publication-finishing values, figure
-export, numeric labels, palettes, and opt-in themes. Internal modules are not
-compatibility guarantees.
+The top-level API contains narrow semantic line rendering, date-axis semantics,
+publication-finishing values, figure export, numeric labels, palettes, and opt-in themes.
+Internal modules are not compatibility guarantees.
+
+Semantic lines
+--------------
+
+.. autofunction:: ggstyle.line
+
+.. autoclass:: ggstyle.LineResult
+   :members:
+
+.. autoclass:: ggstyle.AestheticScale
+   :members: as_dict, describe
+
+.. autoclass:: ggstyle.DiscreteScale
+
+.. autoclass:: ggstyle.ContinuousScale
 
 Plot finishing
 --------------

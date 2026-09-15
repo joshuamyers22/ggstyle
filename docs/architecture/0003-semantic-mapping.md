@@ -125,11 +125,9 @@ Build **narrow native helpers**. The v0.5 public scope is limited to:
 - automatic legends or colorbars only when trained mappings are compatible; and
 - a typed `RenderedResult` exposing the original axes, artists, scales, and diagnostics.
 
-PR17 implements immutable aesthetic-scale and semantic-registry foundations. No public
-`line`, `points`, or `ribbon` helper lands until that foundation can train all
-participating layers before drawing and can roll back a failed request. PR18 adds lines;
-PR19 adds points and ribbons; PR20 adds guides; PR21 completes results, frame parity,
-benchmarks, gallery, and release hardening.
+PR17 implements immutable aesthetic-scale and semantic-registry foundations. PR18 adds
+the public line renderer described below; PR19 adds points and ribbons; PR20 adds guides;
+PR21 completes results, frame parity, benchmarks, gallery, and release hardening.
 
 ### Foundation contract (PR17)
 
@@ -171,6 +169,36 @@ and successful and failed transactions. They intentionally create no data artist
 The prototype function in `tools/semantic_mapping_spike.py` is evidence, not a public or
 private production API. Production work must not copy its deliberately minimal grouping
 logic without the scale and registry contracts from PR17.
+
+### Line renderer contract (PR18)
+
+The public `line()` helper accepts named `x`, `y`, `color`, `group`, and `linestyle`
+columns plus a separate fixed `style` mapping. Mapped color/linestyle cannot also be
+fixed, including through Matplotlib aliases. Column strings are names only and are never
+evaluated as expressions.
+
+Discrete color and linestyle participate in grouping; explicit `group` partitions rows
+without creating an aesthetic scale. Numeric color is continuous and must be constant
+within each resolved `Line2D`. Input order is the default, while `sort="x"` is stable and
+does not aggregate duplicate x values. Missing explicit groups have an explicit
+drop/keep/raise policy.
+
+Every call trains the complete axes registry before drawing. Later discrete levels keep
+prior assignments. If a later layer expands an automatic continuous domain, earlier
+managed lines are recolored from the newly trained assignments. A transaction failure
+restores new artists, previous line properties, limits, units, locators, formatters,
+property-cycle position, renderer ownership, and semantic registry state. An existing
+date handle refreshes after artist creation and participates in the same failure path.
+
+`LineResult` exposes the exact axes, ordinary `Line2D` artists, read-only trained scales,
+diagnostics, and a layer identifier. Guide construction and final cross-geom result
+inspection remain PR20 and PR21 responsibilities respectively.
+
+PR18 also promotes the smallest reusable configuration boundary proven by the renderer:
+public immutable `DiscreteScale` and `ContinuousScale` policies. The public policies do
+not carry an aesthetic name; `color_scale=` or `linestyle_scale=` supplies that context.
+This keeps one vocabulary reusable by later point/ribbon renderers while preserving
+context-specific validation for hexadecimal colors and supported line styles.
 
 ## Explicit exclusions
 

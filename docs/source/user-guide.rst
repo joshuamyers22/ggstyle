@@ -1,6 +1,80 @@
 User guide
 ==========
 
+.. _semantic-lines:
+
+Semantic lines
+--------------
+
+:func:`ggstyle.line` draws named tidy-data columns on a caller-owned Matplotlib axes:
+
+.. code-block:: python
+
+   result = gs.line(
+       frame,
+       x="date",
+       y="value",
+       color="series",
+       linestyle="status",
+       style={"linewidth": 2},
+       sort="x",
+       ax=ax,
+   )
+
+``color=`` and ``linestyle=`` are column mappings. Fixed Matplotlib properties belong in
+the separate ``style=`` mapping; supplying a mapped aesthetic there is an error before
+the axes changes. The result retains the exact axes, ordinary ``Line2D`` artists, and
+read-only trained scales through :class:`ggstyle.LineResult`.
+
+Categorical color and linestyle imply grouping. ``group=`` partitions lines without
+assigning an aesthetic and may be combined with those mappings. Numeric color is
+continuous; because a ``Line2D`` has one color, that value must be constant inside every
+resolved line. Use an explicit group column when several constant-valued lines share one
+continuous mapping. Boolean and pandas categorical color remain discrete.
+
+The default ``sort="input"`` preserves row order. ``sort="x"`` stably orders each line
+by x; duplicate positions retain input order and are never aggregated. Missing explicit
+group values use the visible ``group_missing=`` policy: ``"drop"`` (default), ``"keep"``,
+or ``"raise"``. Dropped rows and accessibility warnings appear in
+``result.diagnostics``.
+
+Default inference can be overridden with immutable scale policy:
+
+.. code-block:: python
+
+   result = gs.line(
+       frame,
+       x="date",
+       y="value",
+       color="code",
+       color_scale=gs.DiscreteScale(
+           order=(1, 2, 3),
+           values=("#0072B2", "#D55E00", "#009E73"),
+           missing="drop",
+           name="Series",
+       ),
+       ax=ax,
+   )
+
+Use :class:`ggstyle.ContinuousScale` with a sequential or diverging
+:class:`ggstyle.Palette` to set explicit limits and missing/infinite policy. A
+:class:`ggstyle.DiscreteScale` is aesthetic-independent until applied, so custom values
+must be hexadecimal colors for ``color_scale=`` or one of the supported named line
+styles for ``linestyle_scale=``.
+
+Scales are shared by aesthetic and source-column name across calls on one axes. Discrete
+assignments remain stable as levels are added. Expanding an automatic continuous domain
+recolors earlier lines managed by this helper so all participating layers remain
+consistent. Calls sharing a mapping must therefore use the same explicit scale policy;
+conflicts fail before drawing. An externally removed complete layer is pruned on the next
+mapped call.
+
+The helper performs no aggregation, smoothing, interpolation, guide construction, or
+axes creation. It validates scale and grouping policy before drawing and rolls back
+partial artists, axes state, earlier colors/styles, and registry state if rendering or
+date-axis refresh fails. If the axes already has a ggstyle date handle, the handle is
+refreshed automatically, including in collapsed mode.
+
 .. _plot-finishing:
 
 Plot finishing
@@ -231,9 +305,9 @@ they do not replace checking a finished figure with its actual line weights, mar
 background, and labels.
 
 Palette construction is pure: it neither imports Matplotlib nor changes ``rcParams``.
-The API selects colours and maps normalized values only. Training a data domain, assigning
-categories, and constructing legends or colorbars remain ordinary Matplotlib operations
-until semantic scales land in a later release.
+The public :func:`ggstyle.line` helper trains its color domain using these palette
+policies through :class:`ggstyle.ContinuousScale`. Legends and colorbars remain later
+v0.5 work.
 
 Ranges
 ------

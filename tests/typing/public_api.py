@@ -7,6 +7,7 @@ import pandas as pd
 from matplotlib.artist import Artist
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter
 from typing_extensions import assert_type
 
@@ -65,6 +66,20 @@ def check_palette_types() -> None:
     assert_type(gs.available_palettes(), list[str])
 
 
+def check_semantic_scale_types() -> None:
+    """Assert reusable semantic-scale configuration remains concrete."""
+    discrete = assert_type(
+        gs.DiscreteScale(order=("A", "B"), missing="drop"),
+        gs.DiscreteScale,
+    )
+    continuous = assert_type(
+        gs.ContinuousScale(palette=gs.palette("sequential"), limits=(0, 1)),
+        gs.ContinuousScale,
+    )
+    assert_type(discrete.values, tuple[str, ...] | None)
+    assert_type(continuous.palette, gs.Palette)
+
+
 def check_finish_types(ax: Axes, dry_run: bool) -> None:
     """Assert concrete types for axis specs, plans, and committed results."""
     specification = assert_type(
@@ -89,6 +104,26 @@ def check_finish_types(ax: Axes, dry_run: bool) -> None:
     assert_type(plan.as_dict(), dict[str, object])
     assert_type(plan.describe(), str)
     assert_type(gs.finish(ax, dry_run=dry_run), gs.FinishPlan | gs.FinishResult)
+
+
+def check_line_types(ax: Axes, frame: pd.DataFrame) -> None:
+    """Assert concrete line results and the trained-scale inspection boundary."""
+    result = assert_type(
+        gs.line(
+            frame,
+            x="date",
+            y="value",
+            color="series",
+            color_scale=gs.DiscreteScale(),
+            ax=ax,
+        ),
+        gs.LineResult,
+    )
+    assert_type(result.axes, Axes)
+    assert_type(result.artists, tuple[Line2D, ...])
+    scale = assert_type(result.scales["color"], gs.AestheticScale)
+    assert_type(scale.as_dict(), dict[str, object])
+    assert_type(scale.describe(), str)
 
 
 def check_save_types(figure: Figure, destination: Path) -> None:

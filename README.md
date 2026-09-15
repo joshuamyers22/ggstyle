@@ -2,11 +2,10 @@
 
 Publication finishing and safe date axes for Matplotlib.
 
-**v0.4 adds a production publication-finishing kit to the safe date axis:** transactional
-labels, pure numeric labellers, immutable qualitative/continuous palettes, parameterized
-themes, collision-aware direct labels, inspectable dry runs, and deterministic figure
-export. Native Matplotlib plotting remains the intended path; there is no `line()` helper
-or general grammar compiler.
+**v0.5 development adds narrow semantic helpers to the v0.4 publication-finishing kit.**
+The first is a transactional tidy-data `line()` helper with shared color and linestyle
+mappings. Native Matplotlib axes and artists remain the intended path; ggstyle is not a
+general grammar compiler.
 
 The date-axis behavior is tested, but the project is still young and follows semantic
 versioning. See the [known limits](#known-limits) before using collapsed mode in
@@ -86,6 +85,47 @@ plan = gs.finish(ax, title="Revenue", theme="minimal", dry_run=True)
 payload = plan.as_dict()  # strict JSON-compatible plain values
 print(plan.describe())    # stable formatted JSON
 ```
+
+### Tidy-data lines
+
+Draw grouped lines on an existing axes while keeping mapped columns separate from fixed
+Matplotlib style:
+
+```python
+result = gs.line(
+    df,
+    x="date",
+    y="value",
+    color="series",                    # mapped column
+    linestyle="status",               # mapped column
+    color_scale=gs.DiscreteScale(order=("A", "B")),
+    style={"linewidth": 2},           # fixed artist properties
+    sort="x",
+    ax=ax,
+)
+```
+
+`result.axes` is exactly `ax`, `result.artists` contains ordinary Matplotlib `Line2D`
+artists, and `result.scales` exposes immutable trained color and linestyle mappings.
+Discrete aesthetics imply grouping and retain stable first-seen assignments across
+repeated calls on the same axes. Numeric color is continuous and must be constant within
+each resolved line; supply `group=` when several lines share one numeric color column.
+
+Input order is preserved by default. `sort="x"` performs a stable within-line sort and
+retains duplicate x values without aggregation. Missing explicit groups are dropped by
+default; choose `group_missing="keep"` or `"raise"` to make the alternative policy
+explicit. A mapped aesthetic cannot also occur in `style`, including through the `c` or
+`ls` aliases.
+
+Pass an immutable `DiscreteScale` to control output values, category order, unobserved
+levels, missing policy, or guide name. `ContinuousScale` accepts a sequential/diverging
+`Palette`, explicit limits, and missing/infinite policies. Supplying a discrete color
+scale also makes numeric codes categorical instead of continuous.
+
+The operation validates and trains before drawing. If artist creation or an existing
+date-axis refresh fails, artists, limits, units, property-cycle position, earlier mapped
+styles, and semantic registry state are restored. Legends and colorbars remain a later
+v0.5 step.
 
 Replace a multi-series line legend with labels at the final visible data points:
 
@@ -366,9 +406,9 @@ from the Matplotlib axes.
 - Unsupported or ambiguous date-bearing artists raise `DateDiscoveryError` during
   preflight. Version 0.4 retains the strict policy and has no permissive warning mode.
 - `.tz()` assumes naive data is UTC when converting for display.
-- Palettes map normalized values and select colours; data-domain training, category
-  assignment, legends, and colorbars remain ordinary Matplotlib work until semantic
-  scales land.
+- `line()` trains color and linestyle mappings, but its scale customization vocabulary,
+  points/ribbons, legends, and colorbars remain later v0.5 work. Numeric color must be
+  constant within a resolved line because one `Line2D` has one color.
 - The current `finish()` surface coordinates plot, subtitle, caption, axis-title,
   numeric-label formatting, safe existing-axes theming, and direct labels for ordinary
   Cartesian `Line2D` series. General label repulsion, scatter endpoint labels, and guide

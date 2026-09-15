@@ -12,6 +12,11 @@ This project follows [Semantic Versioning](https://semver.org/).
   continuous color-scale policies, explicit category/missing/infinite/out-of-bounds
   behavior, complete multi-layer training, and one weakly axes-owned transactional
   registry with stale-plan, cross-axes, rollback, and strict-JSON inspection contracts.
+- Add a narrow public `line()` helper for named tidy-data columns with explicit
+  mapped-versus-fixed style, stable grouping and sorting policy, shared discrete and
+  continuous mappings across calls, ordinary `Line2D` results, collapsed-date refresh,
+  transactional rollback of artists, axis state, property cycles, and semantic state,
+  plus immutable public `DiscreteScale` and `ContinuousScale` configuration.
 
 ## 0.4.0 - 2026-09-15
 

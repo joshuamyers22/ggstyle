@@ -1,9 +1,8 @@
 """ggstyle -- a ggplot2-flavoured plotting layer for Python.
 
-v0.4 combines production-safe collapsed date coordinates with transactional plot labels,
-pure numeric labellers, accessible palettes, parameterized themes, collision-aware direct
-labels, inspectable plans, and publication-safe figure export. No ``line()`` helper or
-general grammar compiler exists.
+ggstyle combines production-safe collapsed date coordinates with transactional plot
+finishing and a narrow tidy-data line helper. It remains an incremental layer over
+ordinary Matplotlib rather than a general grammar compiler.
 
     import matplotlib.pyplot as plt
     import ggstyle as gs
@@ -29,8 +28,10 @@ from .formats import (
     label_si,
 )
 from .formatters import as_formatter
+from .line import LineResult, line
 from .palettes import Palette, available_palettes, palette
 from .save import save
+from .scales import AestheticScale, ContinuousScale, DiscreteScale
 from .theme import (
     DEFAULT_THEME,
     ThemeSpec,
@@ -45,14 +46,18 @@ from .theme import (
 __version__ = version("ggstyle")
 __all__ = [
     "DEFAULT_THEME",
+    "AestheticScale",
     "AxisSpec",
     "AxisSummary",
     "Cadence",
+    "ContinuousScale",
     "DateAxis",
     "DateDiscoveryError",
+    "DiscreteScale",
     "EndLabelSpec",
     "FinishPlan",
     "FinishResult",
+    "LineResult",
     "NumericLabeller",
     "Palette",
     "ThemeSpec",
@@ -68,6 +73,7 @@ __all__ = [
     "label_number",
     "label_percent",
     "label_si",
+    "line",
     "palette",
     "save",
     "stylesheet",
