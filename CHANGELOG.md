@@ -12,12 +12,15 @@ This project follows [Semantic Versioning](https://semver.org/).
 - Make `DateAxis.loc()` return the same native matplotlib date coordinate in both modes;
   ordinal display positions now belong exclusively to the axis transform.
 - Correct collapsed-mode guidance: native `scatter` and `fill_between` collections are
-  supported by the registered scale, while collection-only observation discovery still
-  requires explicit `data=`.
-- Document that `sync_dates()` copies a synchronization snapshot in version 0.2 rather
-  than maintaining a live shared observation registry.
-- Add executable expected-failure specifications for the known collection, observation,
-  inverse-mapping, configuration, formatter-reset, and managed-artist lifecycle gaps.
+  supported by the registered scale; lines and scatter offsets now contribute observation
+  provenance, while polygon-only plots require explicit `data=` until PR6.
+- Add a public transactional `refresh()` lifecycle backed by an owned revisioned registry,
+  and make `sync_dates()` share that registry across weakly held live handles.
+- Add idempotent `dispose()`, filterable `DateDiscoveryError` diagnostics, and rollback for
+  failed shared refresh application.
+- Fix invalid-timezone configuration poisoning, `fmt(minor=False)`, and replacement of
+  externally removed captions. Add annotation artist enumeration and safe bulk removal.
+  All former v0.2 safety-gap expected failures now pass.
 
 ## 0.2.0 - 2026-09-13
 

@@ -29,6 +29,7 @@ That is what keeps annotations honest when the mode changes.
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import Any, Literal
 
 import matplotlib.dates as mdates
@@ -44,21 +45,36 @@ from . import (
     _cadence,
     _date_ranges,
     _date_scale,
+    _formats,
     _grid,
+    _observation_registry,
     _tick_config,
     _tick_plan,
     _tick_positions,
     _tick_rendering,
+    _timezones,
 )
 from ._axis_data import MissingPolicy
 from ._axis_summary import AxisSummary as AxisSummary
 from ._axis_summary import summarize_axis as _summarize_axis
 from ._captions import format_caption as _format_caption
+from ._observation_registry import DateDiscoveryError as DateDiscoveryError
 from ._parse import to_timestamp
 
-__all__ = ["AxisSummary", "DateAxis", "dates", "sync_dates"]
+__all__ = ["AxisSummary", "DateAxis", "DateDiscoveryError", "dates", "sync_dates"]
 
 _ATTR = "_ggstyle_date_axis"
+_UNSET = object()
+
+
+@dataclass(frozen=True)
+class _RuntimeState:
+    registry: _observation_registry.ObservationRegistry
+    numbers: np.ndarray
+    missing_values: int
+    trusted: bool
+    mode: Literal["show", "collapse"]
+    limits: tuple[float, float]
 
 
 class DateAxis:
@@ -119,6 +135,9 @@ class DateAxis:
         self.ax = ax
         self._mode: Literal["show", "collapse"] = "show"
         self._nums = np.empty(0, dtype=float)
+        self._explicit_data = _axis_data.AxisData(np.empty(0, dtype=float), 0, False)
+        self._registry = _observation_registry.ObservationRegistry()
+        self._registry.attach(self)
 
         self._major_spec: Any = None  # None -> auto
         self._minor_spec: Any = "auto"
@@ -139,12 +158,15 @@ class DateAxis:
         self._refreshing = False
         self._trusted = False
         self._missing_values = 0
+        self._disposed = False
 
         self._ingest(data, missing=missing)
-        self._validate()
+        candidate = self._registry.prepare()
+        self._registry.commit(candidate)
+        self._accept_registry(candidate)
 
         setattr(ax, _ATTR, self)
-        ax.callbacks.connect("xlim_changed", self._on_xlim_changed)
+        self._callback_id = ax.callbacks.connect("xlim_changed", self._on_xlim_changed)
 
         if mode == "collapse":
             self.collapse()
@@ -156,23 +178,45 @@ class DateAxis:
     # ------------------------------------------------------------------
 
     def _ingest(self, data: Any, *, missing: MissingPolicy = "raise") -> None:
-        """Collect observed dates from explicit input and from existing artists."""
-        collected = _axis_data.collect(
-            self.ax,
+        """Add sticky explicit dates without rescanning plotted artists."""
+        self._explicit_data = _axis_data.collect_explicit(
             data,
-            existing=_axis_data.AxisData(self._nums, self._missing_values, self._trusted),
+            existing=self._explicit_data,
             missing=missing,
         )
-        self._nums = collected.numbers
-        self._missing_values = collected.missing_values
-        self._trusted = collected.trusted
 
-    def _validate(self) -> None:
-        """Fail loudly if this does not look like a date axis."""
-        _axis_data.validate(
-            self.ax,
-            _axis_data.AxisData(self._nums, self._missing_values, self._trusted),
+    def _managed_artists(self) -> set[Any]:
+        artists = set(self._grid_artists)
+        for annotation in self._annotations:
+            artists.update(annotation.artists)
+        if self._caption_artist is not None:
+            artists.add(self._caption_artist)
+        return artists
+
+    def _accept_registry(
+        self, candidate: _observation_registry.RegistryCandidate
+    ) -> None:
+        self._nums = candidate.numbers
+        self._missing_values = candidate.missing_values
+        self._trusted = candidate.trusted
+
+    def _capture_runtime(self) -> _RuntimeState:
+        lower, upper = self.ax.get_xlim()
+        return _RuntimeState(
+            self._registry,
+            self._nums,
+            self._missing_values,
+            self._trusted,
+            self._mode,
+            (float(lower), float(upper)),
         )
+
+    def _install_scale(self) -> None:
+        if self._mode == "collapse":
+            _date_scale.register()
+            self.ax.set_xscale(_date_scale.SCALE_NAME, observations=self._nums)
+        else:
+            self.ax.set_xscale("linear")
 
     # ------------------------------------------------------------------
     # coordinates
@@ -182,6 +226,16 @@ class DateAxis:
     def mode(self) -> Literal["show", "collapse"]:
         """Return the active coordinate mode."""
         return self._mode
+
+    @property
+    def revision(self) -> int:
+        """Return the committed observation-registry revision."""
+        return self._registry.revision
+
+    @property
+    def disposed(self) -> bool:
+        """Return whether this handle has released its axes lifecycle state."""
+        return self._disposed
 
     @property
     def observations(self) -> pd.DatetimeIndex:
@@ -249,8 +303,6 @@ class DateAxis:
         text = _format_caption(self.summary())
 
         if add:
-            if self._caption_artist is not None:
-                self._caption_artist.remove()
             style: dict[str, Any] = {
                 "ha": "left",
                 "va": "top",
@@ -259,7 +311,11 @@ class DateAxis:
                 "transform": self.ax.transAxes,
             }
             style.update(kwargs)
-            self._caption_artist = self.ax.text(0, -0.14, text, **style)
+            replacement = self.ax.text(0, -0.14, text, **style)
+            previous = self._caption_artist
+            if previous is not None and previous.axes is self.ax:
+                previous.remove()
+            self._caption_artist = replacement
         return text
 
     def _require_observations(self, what: str) -> None:
@@ -399,11 +455,16 @@ class DateAxis:
             major=major,
             minor=minor,
         )
+        previous = self._major_spec, self._minor_spec, self._explicit_ticks
         self._major_spec = configuration.major_spec
         self._minor_spec = configuration.minor_spec
         self._explicit_ticks = configuration.explicit_ticks
-
-        return self._refresh()
+        try:
+            return self._refresh()
+        except Exception:
+            self._major_spec, self._minor_spec, self._explicit_ticks = previous
+            self._refresh()
+            raise
 
     def _resolve_major(self, span: pd.Timedelta) -> _cadence.Cadence:
         return _tick_plan.resolve_major(self._major_spec, span)
@@ -431,7 +492,7 @@ class DateAxis:
     # tick labels
     # ------------------------------------------------------------------
 
-    def fmt(self, spec: Any = None, *, major: Any = None, minor: Any = False):
+    def fmt(self, spec: Any = None, *, major: Any = None, minor: Any = _UNSET):
         """
         Configure tick labels without moving ticks.
 
@@ -442,8 +503,9 @@ class DateAxis:
             :class:`pandas.Timestamp`.
         major : str or callable, optional
             Keyword form of ``spec``.
-        minor : str, callable, or False, default False
-            Minor tick label format. The default leaves minor ticks unlabeled.
+        minor : str, callable, or False, optional
+            Minor tick label format. Omit to leave the current setting unchanged;
+            use ``False`` to disable minor labels.
 
         Returns
         -------
@@ -459,11 +521,24 @@ class DateAxis:
         """
         if spec is not None and major is not None:
             raise TypeError("pass either spec or major=, not both")
+        proposed_major = self._fmt_major
+        proposed_minor = self._fmt_minor
         if spec is not None or major is not None:
-            self._fmt_major = spec if spec is not None else major
-        if minor is not False:
-            self._fmt_minor = minor
-        return self._refresh()
+            proposed_major = spec if spec is not None else major
+            _formats.resolve(proposed_major)
+        if minor is not _UNSET:
+            proposed_minor = minor
+            if minor is not False and minor is not None:
+                _formats.resolve(minor)
+
+        previous = self._fmt_major, self._fmt_minor
+        self._fmt_major, self._fmt_minor = proposed_major, proposed_minor
+        try:
+            return self._refresh()
+        except Exception:
+            self._fmt_major, self._fmt_minor = previous
+            self._refresh()
+            raise
 
     def rotate(self, degrees: float = 45, *, ha: str | None = None):
         """
@@ -487,6 +562,9 @@ class DateAxis:
         Rotation is usually a symptom of bad tick selection; try ``.ticks(n=...)``
         or a coarser cadence first.
         """
+        if ha not in (None, "left", "center", "right"):
+            raise ValueError("ha must be 'left', 'center', or 'right'")
+        previous = self._rotation, self._rotation_ha
         self._rotation = degrees
         if ha is not None:
             self._rotation_ha = ha
@@ -494,7 +572,12 @@ class DateAxis:
             self._rotation_ha = "right"
         else:
             self._rotation_ha = "center"
-        return self._refresh()
+        try:
+            return self._refresh()
+        except Exception:
+            self._rotation, self._rotation_ha = previous
+            self._refresh()
+            raise
 
     def tz(self, zone: str | None):
         """
@@ -514,8 +597,15 @@ class DateAxis:
         -----
         This operation changes labels only; it never changes artist data.
         """
+        _timezones.validate_display_timezone(zone)
+        previous = self._tz
         self._tz = zone
-        return self._refresh()
+        try:
+            return self._refresh()
+        except Exception:
+            self._tz = previous
+            self._refresh()
+            raise
 
     # ------------------------------------------------------------------
     # range
@@ -673,6 +763,37 @@ class DateAxis:
     # annotation in date space
     # ------------------------------------------------------------------
 
+    @property
+    def annotation_artists(self) -> tuple[Any, ...]:
+        """Return the currently attached artists created by annotation helpers."""
+        return tuple(
+            artist
+            for annotation in self._annotations
+            for artist in annotation.artists
+            if artist.axes is self.ax
+        )
+
+    def clear_annotations(self):
+        """Remove all ggstyle-managed date annotations from this axes.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+        """
+        for annotation in self._annotations:
+            _annotations.discard(self.ax, annotation)
+        self._annotations.clear()
+        return self
+
+    def _add_annotation(self, annotation: _annotations.Annotation) -> None:
+        try:
+            _annotations.draw(self.ax, annotation, self.loc)
+        except Exception:
+            _annotations.discard(self.ax, annotation)
+            raise
+        self._annotations.append(annotation)
+
     def vline(self, date: Any, label: str | None = None, **kwargs):
         """
         Draw a vertical line in date coordinates.
@@ -692,8 +813,7 @@ class DateAxis:
         DateAxis
             This handle, for method chaining.
         """
-        self._annotations.append(_annotations.Annotation("vline", (date,), label, kwargs))
-        _annotations.draw(self.ax, self._annotations[-1], self.loc)
+        self._add_annotation(_annotations.Annotation("vline", (date,), label, kwargs))
         return self
 
     def span(self, start: Any, end: Any, label: str | None = None, **kwargs):
@@ -717,10 +837,9 @@ class DateAxis:
         DateAxis
             This handle, for method chaining.
         """
-        self._annotations.append(
+        self._add_annotation(
             _annotations.Annotation("span", (start, end), label, kwargs)
         )
-        _annotations.draw(self.ax, self._annotations[-1], self.loc)
         return self
 
     def spans(
@@ -752,9 +871,29 @@ class DateAxis:
         DateAxis
             This handle, for method chaining.
         """
-        for _, row in frame.iterrows():
-            text = str(row[label]) if label is not None else None
-            self.span(row[start], row[end], label=text, **kwargs)
+        prepared = [
+            _annotations.Annotation(
+                "span",
+                (row[start], row[end]),
+                str(row[label]) if label is not None else None,
+                kwargs,
+            )
+            for _, row in frame.iterrows()
+        ]
+        for annotation in prepared:
+            for date in annotation.dates:
+                self.loc(date)
+
+        added: list[_annotations.Annotation] = []
+        try:
+            for annotation in prepared:
+                self._add_annotation(annotation)
+                added.append(annotation)
+        except Exception:
+            for annotation in added:
+                _annotations.discard(self.ax, annotation)
+                self._annotations.remove(annotation)
+            raise
         return self
 
     # ------------------------------------------------------------------
@@ -783,9 +922,18 @@ class DateAxis:
         ``.grid(False)`` removes them; ``.grid("yearly")`` draws them once a year
         regardless of how often ticks appear.
         """
-        self._grid_spec = None if spec is False else spec
+        proposed = None if spec is False else spec
+        if proposed is not None:
+            _cadence.resolve(proposed)
+        previous = self._grid_spec, self._grid_kwargs
+        self._grid_spec = proposed
         self._grid_kwargs = kwargs
-        return self._refresh()
+        try:
+            return self._refresh()
+        except Exception:
+            self._grid_spec, self._grid_kwargs = previous
+            self._refresh()
+            raise
 
     def _draw_grid(self, lo: pd.Timestamp, hi: pd.Timestamp) -> None:
         self._grid_artists = _grid.render(
@@ -806,6 +954,145 @@ class DateAxis:
         if not self._refreshing:
             self._refresh()
 
+    def refresh(self):
+        """Rescan live data artists and publish one shared registry revision.
+
+        Synchronized handles refresh as a group. Existing date-number limits are
+        preserved even when new observations change collapsed display positions.
+
+        Returns
+        -------
+        DateAxis
+            This handle, for method chaining.
+
+        Raises
+        ------
+        DateDiscoveryError
+            If a candidate artist uses an unsupported coordinate transform.
+        RuntimeError
+            If this handle has been disposed.
+        """
+        if self._disposed:
+            raise RuntimeError("cannot refresh a disposed DateAxis")
+        registry = self._registry
+        candidate = registry.prepare()
+        members = candidate.members
+        if candidate.numbers.size == 0 and any(
+            handle.mode == "collapse" for handle in members
+        ):
+            raise RuntimeError(
+                "refresh() cannot leave a collapsed registry empty; add date data "
+                "or expand the synchronized axes first"
+            )
+        prepared = {
+            handle: handle._prepare_render(numbers=candidate.numbers)
+            for handle in members
+        }
+        states = {handle: handle._capture_runtime() for handle in members}
+        snapshot = registry.snapshot()
+
+        for handle in members:
+            handle._refreshing = True
+        try:
+            registry.commit(candidate)
+            for handle in members:
+                handle._accept_registry(candidate)
+            for handle in members:
+                handle._install_scale()
+                handle.ax.set_xlim(states[handle].limits)
+            for handle in members:
+                handle._render_prepared(*prepared[handle])
+        except Exception:
+            registry.restore(snapshot)
+            for handle, state in states.items():
+                handle._nums = state.numbers
+                handle._missing_values = state.missing_values
+                handle._trusted = state.trusted
+                handle._mode = state.mode
+            for handle, state in states.items():
+                handle._install_scale()
+                handle.ax.set_xlim(state.limits)
+                handle._render_prepared(*handle._prepare_render())
+            raise
+        finally:
+            for handle in members:
+                handle._refreshing = False
+        return self
+
+    def dispose(self) -> None:
+        """Disconnect callbacks and release registry and managed-artist references.
+
+        Existing Matplotlib artists remain on the axes; ggstyle simply stops managing
+        them. Calling this method repeatedly is safe.
+        """
+        if self._disposed:
+            return
+        self.ax.callbacks.disconnect(self._callback_id)
+        self._registry.detach(self)
+        self._registry = _observation_registry.ObservationRegistry()
+        if getattr(self.ax, _ATTR, None) is self:
+            delattr(self.ax, _ATTR)
+        self._grid_artists.clear()
+        self._annotations.clear()
+        self._caption_artist = None
+        self._disposed = True
+
+    def _prepare_render(
+        self,
+        *,
+        numbers: np.ndarray | None = None,
+        mode: Literal["show", "collapse"] | None = None,
+        limits: tuple[float, float] | None = None,
+    ) -> tuple[pd.Timestamp, pd.Timestamp, _tick_plan.TickPlan]:
+        numbers = self._nums if numbers is None else numbers
+        mode = self._mode if mode is None else mode
+        if limits is None:
+            lo, hi = self._visible_range()
+        else:
+            lo = pd.Timestamp(mdates.num2date(limits[0])).tz_localize(None)
+            hi = pd.Timestamp(mdates.num2date(limits[1])).tz_localize(None)
+        if hi < lo:
+            lo, hi = hi, lo
+        explicit_positions = None
+        if self._explicit_ticks is not None:
+            explicit_positions = np.asarray(
+                mdates.date2num(self._explicit_ticks), dtype=float
+            )
+        elif mode == "collapse" and numbers.size == 0:
+            raise RuntimeError("tick placement needs observed dates")
+
+        plan = _tick_plan.build_tick_plan(
+            lo=lo,
+            hi=hi,
+            mode=mode,
+            knots=numbers,
+            major_spec=self._major_spec,
+            minor_spec=self._minor_spec,
+            explicit_ticks=self._explicit_ticks,
+            explicit_positions=explicit_positions,
+            major_format=self._fmt_major,
+            minor_format=self._fmt_minor,
+            timezone=self._tz,
+        )
+        return lo, hi, plan
+
+    def _render_prepared(
+        self,
+        lo: pd.Timestamp,
+        hi: pd.Timestamp,
+        plan: _tick_plan.TickPlan,
+    ) -> None:
+        _tick_rendering.render(
+            self.ax,
+            plan.positions,
+            plan.labels,
+            minor_positions=plan.minor_positions,
+            minor_labels=plan.minor_labels,
+            rotation=self._rotation,
+            horizontal_alignment=self._rotation_ha,
+        )
+        self._draw_grid(lo, hi)
+
     def _refresh(self):
         """Recompute ticks and labels from the current limits.
 
@@ -816,42 +1103,7 @@ class DateAxis:
             return self
         self._refreshing = True
         try:
-            lo, hi = self._visible_range()
-            if hi < lo:
-                lo, hi = hi, lo
-            explicit_positions = None
-            if self._explicit_ticks is not None:
-                explicit_positions = np.asarray(
-                    mdates.date2num(self._explicit_ticks), dtype=float
-                )
-            elif self._mode == "collapse":
-                self._require_observations("tick placement")
-
-            plan = _tick_plan.build_tick_plan(
-                lo=lo,
-                hi=hi,
-                mode=self._mode,
-                knots=self._nums,
-                major_spec=self._major_spec,
-                minor_spec=self._minor_spec,
-                explicit_ticks=self._explicit_ticks,
-                explicit_positions=explicit_positions,
-                major_format=self._fmt_major,
-                minor_format=self._fmt_minor,
-                timezone=self._tz,
-            )
-
-            _tick_rendering.render(
-                self.ax,
-                plan.positions,
-                plan.labels,
-                minor_positions=plan.minor_positions,
-                minor_labels=plan.minor_labels,
-                rotation=self._rotation,
-                horizontal_alignment=self._rotation_ha,
-            )
-
-            self._draw_grid(lo, hi)
+            self._render_prepared(*self._prepare_render())
         finally:
             self._refreshing = False
         return self
@@ -894,35 +1146,75 @@ def sync_dates(
 
     Notes
     -----
-    All handles receive a copy of the union of observed dates. This makes collapsed
-    coordinates comparable at call time instead of assigning different ordinal positions
-    to the same date. The copies do not form a live shared registry: register later
-    observations explicitly and call ``sync_dates()`` again to resynchronize the panels.
+    All handles join one live, revisioned observation registry. Refreshing any member
+    rescans every live member and applies the resulting union transactionally.
     """
     _axis_sync.validate_options(mode, limits)
 
     axes_list = list(axes)
     if not axes_list:
         raise ValueError("axes must contain at least one matplotlib Axes")
-    handles = [dates(ax) for ax in axes_list]
+    handles = []
+    for ax in axes_list:
+        existing = getattr(ax, _ATTR, None)
+        handles.append(existing if existing is not None else DateAxis(ax))
+    registry = _observation_registry.ObservationRegistry()
     for handle in handles:
-        handle._require_observations("sync_dates()")
+        registry.attach(handle)
+    candidate = registry.prepare()
+    local_by_handle = dict(zip(candidate.members, candidate.local_numbers, strict=True))
+    for handle in handles:
+        if local_by_handle[handle].size == 0:
+            handle._require_observations("sync_dates()")
 
     sync_plan = _axis_sync.plan(
-        [handle._nums for handle in handles],
+        [local_by_handle[handle] for handle in handles],
         [handle.mode for handle in handles],
         mode=mode,
         limits=limits,
     )
-    lower_date = pd.Timestamp(mdates.num2date(sync_plan.lower)).tz_localize(None)
-    upper_date = pd.Timestamp(mdates.num2date(sync_plan.upper)).tz_localize(None)
+    prepared = {
+        handle: handle._prepare_render(
+            numbers=candidate.numbers,
+            mode=sync_plan.mode,
+            limits=(sync_plan.lower, sync_plan.upper),
+        )
+        for handle in handles
+    }
+    states = {handle: handle._capture_runtime() for handle in handles}
+    old_registries = {handle: handle._registry for handle in handles}
+
     for handle in handles:
-        handle.expand()
-        handle._nums = sync_plan.observations.copy()
-        handle._trusted = True
-        if sync_plan.mode == "collapse":
-            handle.collapse()
-        handle.zoom(lower_date, upper_date)
+        handle._refreshing = True
+    try:
+        registry.commit(candidate)
+        for handle in handles:
+            handle._registry = registry
+            handle._accept_registry(candidate)
+            handle._mode = sync_plan.mode
+        for handle in handles:
+            handle._install_scale()
+            handle.ax.set_xlim(sync_plan.lower, sync_plan.upper)
+        for handle in handles:
+            handle._render_prepared(*prepared[handle])
+    except Exception:
+        for handle, state in states.items():
+            handle._registry = state.registry
+            handle._nums = state.numbers
+            handle._missing_values = state.missing_values
+            handle._trusted = state.trusted
+            handle._mode = state.mode
+        for handle, state in states.items():
+            handle._install_scale()
+            handle.ax.set_xlim(state.limits)
+            handle._render_prepared(*handle._prepare_render())
+        raise
+    else:
+        for handle, old_registry in old_registries.items():
+            old_registry.detach(handle)
+    finally:
+        for handle in handles:
+            handle._refreshing = False
     return handles
 
 
@@ -969,7 +1261,9 @@ def dates(
 
     Notes
     -----
-    Repeated calls for the same axes return the same object.
+    Repeated calls for the same axes return the same object and refresh its observation
+    registry. This discovers supported artists added, changed, or removed since the
+    previous call.
     """
     if mode not in (None, "show", "collapse"):
         raise ValueError(f"mode must be 'show' or 'collapse', got {mode!r}")
@@ -982,14 +1276,15 @@ def dates(
         return DateAxis(ax, data, mode=mode or "show", missing=missing)
 
     if data is not None:
-        was_collapsed = handle.mode == "collapse"
-        if was_collapsed:
-            handle.expand()
+        previous = handle._explicit_data
         handle._ingest(data, missing=missing)
-        handle._validate()
-        handle._refresh()
-        if was_collapsed:
-            handle.collapse()
+        try:
+            handle.refresh()
+        except Exception:
+            handle._explicit_data = previous
+            raise
+    else:
+        handle.refresh()
     if mode == "collapse":
         handle.collapse()
     elif mode == "show":

@@ -30,7 +30,8 @@ def render(
 ) -> list[Artist]:
     """Replace managed grid artists and return the current artist collection."""
     for artist in existing:
-        artist.remove()
+        if artist.axes is ax:
+            artist.remove()
     if spec is None:
         return []
 

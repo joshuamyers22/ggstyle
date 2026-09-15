@@ -114,6 +114,7 @@ Every one of these is correct in both modes — that is the whole point of the h
 .vline("2020-03-23", label="trough")
 .span("2020-02-19", "2020-03-23", label="drawdown")
 .spans(events_df, start="begin", end="end", label="name")
+.clear_annotations()                    # remove managed annotation artists safely
 .grid("yearly")                       # gridline cadence, independent of ticks
 ```
 
@@ -188,16 +189,20 @@ generated captions.
 
 ## Multiple panels
 
-Synchronize comparable axes with a common observation snapshot and limits:
+Synchronize comparable axes with a live observation registry and common limits:
 
 ```python
 handles = gs.sync_dates(axes, mode="collapse", limits="union")
 ```
 
 This prevents the same date from receiving different ordinal positions in independently
-collapsed panels at synchronization time. Version 0.2 copies that snapshot into each
-handle; it does not maintain a live shared registry. If observations later change,
-register the new dates explicitly and call `sync_dates()` again before comparing panels.
+collapsed panels. The handles share one revisioned registry: calling `.refresh()` on any
+member rescans every live member and updates every collapsed scale transactionally.
+
+Call `.refresh()` after adding, changing, or removing plotted artists. A repeated
+`gs.dates(ax)` call also refreshes an existing handle. Call `.dispose()` to disconnect a
+handle and release its registry and managed-artist references without removing artists
+from the Matplotlib axes.
 
 ## Design rules
 
@@ -212,12 +217,11 @@ register the new dates explicitly and call `sync_dates()` again before comparing
 ## Known limits
 
 - Collapsed mode supports lines, `scatter`, `fill_between`, and native data-space or
-  x-data blended transforms without rewriting their geometry. A collection-only chart
-  still needs `gs.dates(ax, data=dates)` because observation discovery remains line-only
-  until the refresh lifecycle lands. Custom transforms outside `ax.transData` are not
-  inferred as date-bearing.
-- `sync_dates()` synchronizes a snapshot; later observations do not propagate between
-  handles automatically.
+  x-data blended transforms without rewriting their geometry. Lines and scatter
+  collections contribute observations automatically. A `fill_between`-only chart still
+  needs `gs.dates(ax, data=dates)` until polygon provenance lands in PR6.
+- Data artists with custom x transforms are rejected during refresh; use `ax.transData`
+  or provide the complete observation registry explicitly.
 - `.tz()` assumes naive data is UTC when converting for display.
 - No palettes module yet: the colour cycle lives in the stylesheets.
 

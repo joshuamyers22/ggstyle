@@ -36,10 +36,11 @@ Collapsed axes
 
 Call :meth:`ggstyle.DateAxis.collapse` to remove unobserved gaps and
 :meth:`ggstyle.DateAxis.expand` to restore calendar spacing. The observations come from
-the plotted lines and any explicit ``data=`` passed to :func:`ggstyle.dates`. Lines,
-``scatter``, ``fill_between``, and native data-space annotations all pass through the
-same scale without having their geometry rewritten. Until collection discovery lands, a
-collection-only plot must pass its dates explicitly through ``data=``.
+plotted lines, scatter offsets, and any explicit ``data=`` passed to
+:func:`ggstyle.dates`. Lines, ``scatter``, ``fill_between``, and native data-space
+annotations all pass through the same scale without having their geometry rewritten. A
+``fill_between``-only plot must still pass its dates explicitly through ``data=`` until
+polygon provenance lands.
 
 Annotations
 -----------
@@ -49,6 +50,11 @@ Use :meth:`ggstyle.DateAxis.loc`, :meth:`ggstyle.DateAxis.vline`, and
 :meth:`ggstyle.DateAxis.loc` returns a native matplotlib date number in either mode;
 collapsed display positioning belongs to the registered scale. Native calls such as
 ``ax.axvline(timestamp)`` therefore work as expected.
+
+The artists created by ggstyle annotation helpers are available through
+:attr:`ggstyle.DateAxis.annotation_artists` for ordinary Matplotlib styling. Call
+:meth:`ggstyle.DateAxis.clear_annotations` to remove every managed annotation; externally
+removed artists are tolerated.
 
 Axis summaries and captions
 ---------------------------
@@ -84,9 +90,9 @@ they are not treated as discarded source observations.
 Synchronized panels
 -------------------
 
-:func:`ggstyle.sync_dates` adopts several axes, copies the same observation snapshot into
-each handle, and applies common date limits. This matters in collapsed mode: without a
-common snapshot, the same date can have a different ordinal position in each panel.
+:func:`ggstyle.sync_dates` adopts several axes, attaches them to one live observation
+registry, and applies common date limits. This matters in collapsed mode: without a
+common registry, the same date can have a different ordinal position in each panel.
 
 .. code-block:: python
 
@@ -96,9 +102,13 @@ Use ``limits="intersection"`` to display only the overlapping observation range.
 panels already use different modes, pass an explicit mode rather than relying on an
 arbitrary panel to win.
 
-The version 0.2 snapshot is not a live shared registry. Later observations registered on
-one handle do not propagate to the others. Register the new dates explicitly and call
-``sync_dates()`` again before making cross-panel comparisons.
+Call :meth:`ggstyle.DateAxis.refresh` after adding, changing, or removing plotted artists.
+Refreshing any synchronized handle rescans every live member, commits one new registry
+revision, and updates every member scale while preserving date-number view limits. A
+repeated :func:`ggstyle.dates` call refreshes an existing handle as well.
+
+Call :meth:`ggstyle.DateAxis.dispose` to disconnect callbacks and detach a handle from its
+registry. Disposal is idempotent and leaves existing Matplotlib artists on the axes.
 
 .. _themes:
 

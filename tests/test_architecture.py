@@ -43,6 +43,14 @@ def test_date_scale_does_not_depend_on_date_axis_or_artist_classes() -> None:
     assert "PolyCollection" not in source
 
 
+def test_observation_registry_tracks_provenance_without_mutating_geometry() -> None:
+    source = Path("src/ggstyle/_observation_registry.py").read_text()
+    assert "from .dates" not in source
+    assert "set_xdata" not in source
+    assert "set_offsets" not in source
+    assert "vertices[:, 0] =" not in source
+
+
 def test_tick_rendering_adapter_does_not_depend_on_date_axis_policy() -> None:
     source = Path("src/ggstyle/_tick_rendering.py").read_text()
     assert "from .dates" not in source

@@ -188,6 +188,11 @@ Transforms outside the declared boundary remain explicit exclusions. The subsequ
 roadmap should treat scatter and polygon work as provenance, diagnostics, and
 regression coverage—not as geometry-mutation adapters.
 
+PR5 implements the owned revisioned registry, line and scatter provenance, live
+synchronization, transactional refresh rollback, and weak disposal semantics described
+above. Polygon provenance remains the PR6 discovery increment; until then, a polygon-only
+axes must provide its complete observations explicitly.
+
 ## Rejected alternative
 
 Artist-by-artist mutation was rejected. It requires a growing adapter for every

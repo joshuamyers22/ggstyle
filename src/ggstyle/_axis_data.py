@@ -67,6 +67,34 @@ def collect(
     return AxisData(numbers, missing_values, trusted)
 
 
+def collect_explicit(
+    data: Any,
+    *,
+    existing: AxisData,
+    missing: MissingPolicy,
+) -> AxisData:
+    """Add sticky explicit observations without consulting plotted artists."""
+    if missing not in ("raise", "drop"):
+        raise ValueError(f"missing must be 'raise' or 'drop', got {missing!r}")
+    if data is None:
+        return existing
+
+    index = to_datetime_index(data)
+    missing_count = int(np.count_nonzero(index.isna()))
+    if missing_count and missing == "raise":
+        raise ValueError(
+            f"date data contains {missing_count} missing value(s); "
+            "pass missing='drop' to exclude them explicitly"
+        )
+    numbers = np.asarray(mdates.date2num(index[index.notna()]), dtype=float)
+    combined = np.unique(np.concatenate([existing.numbers, numbers]))
+    return AxisData(
+        combined,
+        existing.missing_values + missing_count,
+        True,
+    )
+
+
 def validate(ax: Axes, data: AxisData) -> None:
     """Raise when collected observations do not plausibly represent dates."""
     if data.numbers.size == 0:
@@ -87,7 +115,8 @@ def validate(ax: Axes, data: AxisData) -> None:
         )
 
 
-def _has_date_converter(ax: Axes) -> bool:
+def has_date_converter(ax: Axes) -> bool:
+    """Return whether Matplotlib installed a date converter on the x-axis."""
     axis = ax.xaxis
     getter = getattr(axis, "get_converter", None)
     converter = getter() if getter is not None else getattr(axis, "converter", None)
@@ -96,3 +125,6 @@ def _has_date_converter(ax: Axes) -> bool:
     if isinstance(converter, (mdates.DateConverter, mdates.ConciseDateConverter)):
         return True
     return "Date" in type(converter).__name__
+
+
+_has_date_converter = has_date_converter

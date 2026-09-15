@@ -1,8 +1,14 @@
-"""Tests for timezone display policy."""
+from zoneinfo import ZoneInfoNotFoundError
 
 import pandas as pd
+import pytest
 
-from ggstyle._timezones import apply_display_timezone
+from ggstyle._timezones import apply_display_timezone, validate_display_timezone
+
+
+def test_invalid_zone_uses_standard_library_exception() -> None:
+    with pytest.raises(ZoneInfoNotFoundError):
+        validate_display_timezone("Not/A_Real_Timezone")
 
 
 def test_disabled_display_timezone_preserves_index() -> None:

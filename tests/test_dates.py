@@ -474,6 +474,39 @@ class TestAnnotations:
         actual = line.get_transform().transform(line.get_path().vertices)[:, 0]
         assert np.allclose(actual, expected)
 
+    def test_annotation_artists_can_be_enumerated_and_cleared(self, ax):
+        handle = gs.dates(ax).vline("2020-06-15", label="event")
+        assert len(handle.annotation_artists) == 2
+        handle.annotation_artists[0].set_color("red")
+        handle.clear_annotations()
+        assert handle.annotation_artists == ()
+
+    def test_clear_annotations_tolerates_external_removal(self, ax):
+        handle = gs.dates(ax).vline("2020-06-15", label="event")
+        handle.annotation_artists[0].remove()
+        handle.clear_annotations()
+        assert handle.annotation_artists == ()
+
+    def test_failed_annotation_does_not_leave_managed_state(self, ax):
+        handle = gs.dates(ax)
+        data_lines = len(ax.lines)
+        with pytest.raises(AttributeError):
+            handle.vline("2020-06-15", not_a_line_property=True)
+        assert handle.annotation_artists == ()
+        assert len(ax.lines) == data_lines
+
+    def test_spans_validates_all_dates_before_drawing(self, ax):
+        handle = gs.dates(ax)
+        events = pd.DataFrame(
+            {
+                "start": ["2020-01-01", "not-a-date"],
+                "end": ["2020-01-02", "2020-01-03"],
+            }
+        )
+        with pytest.raises(TypeError, match="could not interpret"):
+            handle.spans(events)
+        assert handle.annotation_artists == ()
+
 
 class TestGrid:
     def test_grid_cadence_independent_of_ticks(self, ax):
@@ -515,6 +548,12 @@ class TestRotation:
         tick_labels = ax.get_xticklabels()
         assert all(text.get_rotation() == 30 for text in tick_labels)
         assert all(text.get_horizontalalignment() == "left" for text in tick_labels)
+
+    def test_invalid_alignment_leaves_previous_rotation(self, ax):
+        handle = gs.dates(ax).rotate(30, ha="left")
+        with pytest.raises(ValueError, match="ha must be"):
+            handle.rotate(60, ha="outside")
+        assert all(text.get_rotation() == 30 for text in ax.get_xticklabels())
 
 
 class TestIntraday:

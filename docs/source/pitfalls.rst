@@ -17,13 +17,15 @@ Collection observation discovery
 --------------------------------
 
 Lines, ``scatter`` collections, and ``fill_between`` polygons retain matplotlib date
-numbers and render correctly before or after collapse. Version 0.3 does not yet discover
-observations from a collection-only plot. Supply its complete date sequence explicitly::
+numbers and render correctly before or after collapse. Lines and scatter collections
+contribute observations automatically. Polygon provenance is deferred to PR6, so a
+``fill_between``-only plot must supply its complete date sequence explicitly::
 
    handle = gs.dates(ax, data=dates).collapse()
 
-Without a plotted line or explicit ``data=``, collapse fails rather than selecting an
-accidentally incomplete coordinate map.
+Without another supported source or explicit ``data=``, adoption fails with a
+:class:`ggstyle.DateDiscoveryError` rather than selecting an accidentally incomplete
+coordinate map.
 
 Dates between observations
 --------------------------
@@ -60,22 +62,19 @@ Calling :meth:`ggstyle.DateAxis.collapse` independently on several panels can as
 different ordinal positions to the same date. Use :func:`ggstyle.sync_dates` when panels
 are intended for comparison.
 
-Version 0.2 synchronization is a snapshot operation: each handle receives a copy of the
-combined observations and limits at call time. Adding or registering observations on one
-handle does not update the others automatically. Register new observations explicitly,
-then call :func:`ggstyle.sync_dates` again before comparing the panels.
+Synchronization uses one live, revisioned registry. After changing plotted artists, call
+:meth:`ggstyle.DateAxis.refresh` on any member. The refresh rescans every member and
+updates their transforms in one transaction while preserving view limits.
 
-Known lifecycle limitations
----------------------------
+Refresh boundaries
+------------------
 
-The following lifecycle limitations are covered by strict expected-failure tests while
-their contracts are designed for version 0.3:
+Refresh discovers ordinary data-space lines and scatter offsets. A date-bearing line or
+scatter collection using a custom x transform is rejected with
+:class:`ggstyle.DateDiscoveryError`; ggstyle does not guess whether arbitrary display or
+axes coordinates are dates. Native ``axvline`` blended transforms and ggstyle-managed
+annotations and grids are presentation elements and do not contribute observations.
 
-* calling :func:`ggstyle.dates` without explicit ``data`` does not rescan lines added
-  after adoption;
-* an invalid display timezone can remain stored after the operation raises;
-* ``fmt(minor=False)`` does not disable minor labels after they have been enabled; and
-* externally removing a managed caption can make later replacement raise.
-
-These are documented constraints, not supported behavior. The tests describe the desired
-safe contracts and must be converted to ordinary passing regressions as each fix lands.
+Raw numeric coordinates on an axes whose date converter was installed by another artist
+remain inherently ambiguous. Supply complete explicit ``data=`` whenever numeric values
+are intended to represent date numbers.

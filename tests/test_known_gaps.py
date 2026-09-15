@@ -1,8 +1,4 @@
-"""Executable specifications for v0.2 safety gaps and their regressions.
-
-Outstanding contracts remain ``xfail(strict=True)``. Once resolved, their markers are
-removed so the same examples become ordinary regression tests.
-"""
+"""Regression tests for the v0.2 safety gaps resolved during v0.3 work."""
 
 from zoneinfo import ZoneInfoNotFoundError
 
@@ -16,8 +12,6 @@ import matplotlib.pyplot as plt
 
 import ggstyle as gs
 
-_V03_GAP = pytest.mark.xfail(strict=True, reason="known v0.2 gap; required for v0.3")
-
 
 @pytest.fixture
 def dates() -> pd.DatetimeIndex:
@@ -25,7 +19,6 @@ def dates() -> pd.DatetimeIndex:
     return pd.bdate_range("2024-01-01", periods=5)
 
 
-@_V03_GAP
 def test_repeated_adoption_rescans_lines_added_after_adoption() -> None:
     """A later accessor call must not leave an accidentally incomplete registry."""
     fig, ax = plt.subplots()
@@ -42,8 +35,8 @@ def test_repeated_adoption_rescans_lines_added_after_adoption() -> None:
         plt.close(fig)
 
 
-def test_sync_dates_is_a_snapshot_and_can_be_reapplied() -> None:
-    """Version 0.2 copies observations; explicit resynchronization refreshes them."""
+def test_sync_dates_shares_live_registry_updates() -> None:
+    """Explicit observations on one member propagate through the shared registry."""
     fig, axes = plt.subplots(2, 1)
     try:
         initial = pd.date_range("2024-01-01", periods=3)
@@ -55,16 +48,11 @@ def test_sync_dates_is_a_snapshot_and_can_be_reapplied() -> None:
         gs.dates(axes[0], data=[new_date])
 
         assert new_date in left.observations
-        assert new_date not in right.observations
-
-        left, right = gs.sync_dates(axes)
-        assert list(left.observations) == list(right.observations)
         assert new_date in right.observations
     finally:
         plt.close(fig)
 
 
-@_V03_GAP
 def test_synchronized_handles_share_live_registry_updates() -> None:
     """A registry revision must propagate to every synchronized handle."""
     fig, axes = plt.subplots(2, 1)
@@ -95,7 +83,6 @@ def test_single_observation_mapping_round_trips_outside_the_knot() -> None:
         plt.close(fig)
 
 
-@_V03_GAP
 def test_invalid_timezone_does_not_poison_valid_configuration(
     dates: pd.DatetimeIndex,
 ) -> None:
@@ -114,7 +101,6 @@ def test_invalid_timezone_does_not_poison_valid_configuration(
         plt.close(fig)
 
 
-@_V03_GAP
 def test_false_disables_previously_enabled_minor_labels(
     dates: pd.DatetimeIndex,
 ) -> None:
@@ -147,7 +133,6 @@ def test_externally_removed_annotation_is_safe_across_mode_changes(
         plt.close(fig)
 
 
-@_V03_GAP
 def test_externally_removed_caption_is_safe_to_replace(
     dates: pd.DatetimeIndex,
 ) -> None:

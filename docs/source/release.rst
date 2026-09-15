@@ -15,6 +15,17 @@ passes its result to matplotlib artists or limits continues to work, while code 
 asserted observation ordinals should instead inspect the axis scale transform. This is a
 deliberate pre-1.0 migration to avoid double-transforming native matplotlib operations.
 
+Observation provenance is now held by an owned, revisioned registry. Lines and scatter
+collections are discovered automatically, explicit dates remain sticky, and removed or
+mutated artists are reflected by :meth:`ggstyle.DateAxis.refresh`. Synchronized handles
+share one live registry, so refreshing any member transactionally updates every member
+without changing their date-number view limits. Polygon-only charts still require
+explicit ``data=`` until polygon provenance lands.
+
+:meth:`ggstyle.DateAxis.dispose` disconnects callbacks and weak registry ownership while
+leaving Matplotlib artists in place. Failed timezone, formatter, caption, discovery, and
+shared-registry operations retain the previous valid state.
+
 0.2.0
 -----
 

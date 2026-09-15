@@ -16,7 +16,7 @@ palettes module and no ``line()`` yet; those remain future additions.
 from importlib.metadata import version
 
 from ._cadence import Cadence
-from .dates import AxisSummary, DateAxis, dates, sync_dates
+from .dates import AxisSummary, DateAxis, DateDiscoveryError, dates, sync_dates
 from .theme import DEFAULT_THEME, available_themes, stylesheet, theme, use_theme
 
 __version__ = version("ggstyle")
@@ -25,6 +25,7 @@ __all__ = [
     "AxisSummary",
     "Cadence",
     "DateAxis",
+    "DateDiscoveryError",
     "__version__",
     "available_themes",
     "dates",

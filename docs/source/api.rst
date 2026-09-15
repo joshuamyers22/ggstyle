@@ -15,6 +15,8 @@ Date axes
 .. autoclass:: ggstyle.AxisSummary
    :members:
 
+.. autoexception:: ggstyle.DateDiscoveryError
+
 .. autoclass:: ggstyle.Cadence
    :members:
 

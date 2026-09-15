@@ -53,3 +53,11 @@ def draw(ax: Axes, annotation: Annotation, locate: Callable[[Any], float]) -> No
                 clip_on=True,
             )
         )
+
+
+def discard(ax: Axes, annotation: Annotation) -> None:
+    """Remove any still-attached artists and clear managed references."""
+    for artist in annotation.artists:
+        if artist.axes is ax:
+            artist.remove()
+    annotation.artists.clear()

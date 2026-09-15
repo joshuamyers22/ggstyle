@@ -95,17 +95,15 @@ def test_scale_handles_collections_without_mutating_geometry(
         plt.close(fig)
 
 
-def test_collection_only_axis_requires_explicit_observations(
+def test_collection_only_scatter_discovers_observations(
     irregular_dates: pd.DatetimeIndex,
 ) -> None:
     fig, ax = plt.subplots()
     try:
         ax.scatter(irregular_dates, np.arange(len(irregular_dates), dtype=float))
-        with pytest.raises(RuntimeError, match=r"pass dates\(ax, data="):
-            gs.dates(ax).collapse()
-
-        handle = gs.dates(ax, data=irregular_dates).collapse()
+        handle = gs.dates(ax).collapse()
         assert handle.mode == "collapse"
+        assert list(handle.observations) == list(irregular_dates)
     finally:
         plt.close(fig)
 
