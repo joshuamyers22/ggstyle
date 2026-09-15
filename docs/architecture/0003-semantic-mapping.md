@@ -125,11 +125,48 @@ Build **narrow native helpers**. The v0.5 public scope is limited to:
 - automatic legends or colorbars only when trained mappings are compatible; and
 - a typed `RenderedResult` exposing the original axes, artists, scales, and diagnostics.
 
-PR17 must first implement immutable aesthetic-scale and semantic-registry foundations.
-No public `line`, `points`, or `ribbon` helper lands until that foundation can train all
+PR17 implements immutable aesthetic-scale and semantic-registry foundations. No public
+`line`, `points`, or `ribbon` helper lands until that foundation can train all
 participating layers before drawing and can roll back a failed request. PR18 adds lines;
 PR19 adds points and ribbons; PR20 adds guides; PR21 completes results, frame parity,
 benchmarks, gallery, and release hardening.
+
+### Foundation contract (PR17)
+
+The private `ggstyle._semantic_scales` module keeps training independent of Matplotlib.
+It defines immutable discrete color/linestyle and continuous color policies and their
+trained counterparts:
+
+- ordinary discrete input uses stable first-seen order across layer registration order;
+- pandas categorical input preserves its declared categories, with an explicit choice to
+  retain or drop unobserved levels;
+- explicit discrete order rejects observations outside that order rather than silently
+  assigning a fallback;
+- palette cardinality is a preflight error, including the eight-color accessibility cap;
+- missing values have `map`, `drop`, or `raise` policy;
+- infinity has independent `clip`, `color`, `drop`, or `raise` policy on continuous
+  scales;
+- explicit continuous limits delegate out-of-bounds behavior to the immutable palette;
+  automatic limits use the finite union across every participating layer; and
+- a constant continuous domain maps to the palette midpoint.
+
+The private `ggstyle._semantic_registry` module associates one registry with a live axes
+through a weak-key map. A mapping request defensively captures its values, source column,
+aesthetic, scale policy, and stable layer ID. `prepare()` combines every committed and
+candidate contribution, validates compatible scale policy, trains shared scales, and
+maps all layer outputs without drawing. `commit()` accepts only a current plan created by
+that registry; stale or cross-axes plans fail without changing state.
+
+Rendering PRs must use `transact()` with an artist rollback callback. If drawing fails,
+the callback removes or restores partial artist changes and the registry restores its
+prior immutable snapshot. Re-entrant transactions fail. Inspection reports scale policy,
+layer/output counts, dropped observations, changes, diagnostics, and revisions as strict
+JSON without serializing full per-row mapped output.
+
+These modules remain private until drawing use establishes the smallest stable public
+configuration vocabulary. The PR17 tests exercise policy, ordering, multi-layer
+retraining, axes/date-registry independence, weak lifetime, stale/cross-registry plans,
+and successful and failed transactions. They intentionally create no data artists.
 
 The prototype function in `tools/semantic_mapping_spike.py` is evidence, not a public or
 private production API. Production work must not copy its deliberately minimal grouping

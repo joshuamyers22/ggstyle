@@ -8,6 +8,10 @@ This project follows [Semantic Versioning](https://semver.org/).
   direction through a reproducible three-route scorecard and executable Matplotlib,
   seaborn objects, and plotnine prototypes. Record axes adoption and date correctness as
   hard gates; keep third-party compilers out of ggstyle's dependency graph.
+- Add the private v0.5 semantic foundation: immutable discrete color/linestyle and
+  continuous color-scale policies, explicit category/missing/infinite/out-of-bounds
+  behavior, complete multi-layer training, and one weakly axes-owned transactional
+  registry with stale-plan, cross-axes, rollback, and strict-JSON inspection contracts.
 
 ## 0.4.0 - 2026-09-15
 

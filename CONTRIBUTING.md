@@ -46,7 +46,10 @@ Semantic-mapping work must follow
 [ADR 0003](docs/architecture/0003-semantic-mapping.md). Keep mapped aesthetics separate
 from fixed artist style, train shared scales before drawing, return ordinary Matplotlib
 artists, and preserve the existing-axes and date-correctness hard gates. The executable
-spike is decision evidence, not a production helper implementation.
+spike is decision evidence, not a production helper implementation. Scale and registry
+foundation modules remain private until real line-layer use proves their public
+vocabulary; renderer transactions must supply artist rollback alongside registry
+rollback.
 
 Before release-sensitive changes, run `python tools/benchmark_registry.py` and build the
 wheel. CI installs that wheel into an isolated environment and renders a collapsed plot

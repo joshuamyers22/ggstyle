@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Mapping
+from datetime import date, datetime
 from enum import Enum
+from numbers import Integral, Real
 from typing import Any
 
 from cycler import Cycler
@@ -17,6 +19,13 @@ def json_safe(value: Any) -> object:
         return value
     if isinstance(value, float):
         return value if math.isfinite(value) else str(value)
+    if isinstance(value, Integral):
+        return int(value)
+    if isinstance(value, Real):
+        resolved = float(value)
+        return resolved if math.isfinite(resolved) else str(resolved)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
     if isinstance(value, Enum):
         return json_safe(value.value)
     if isinstance(value, Mapping):
