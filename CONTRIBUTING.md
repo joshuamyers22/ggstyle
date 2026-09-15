@@ -25,6 +25,10 @@ New behavior needs tests. Changes to collapsed coordinates should test both coll
 expanded modes, including switching between them. Do not commit generated distributions,
 virtual environments, caches, or platform metadata.
 
+Collapsed-coordinate changes must follow
+[ADR 0001](docs/architecture/0001-collapsed-date-scale.md), which records the observation,
+refresh, synchronization, diagnostic, and transaction contracts for the v0.3 redesign.
+
 By contributing, you agree that your contributions are licensed under the MIT License.
 
 ## Releasing

@@ -5,6 +5,7 @@ corresponding v0.3 work is outstanding. A fix therefore produces an XPASS failur
 the marker is removed, preventing resolved gaps from remaining hidden in the ledger.
 """
 
+from weakref import WeakKeyDictionary
 from zoneinfo import ZoneInfoNotFoundError
 
 import matplotlib
@@ -95,6 +96,26 @@ def test_sync_dates_is_a_snapshot_and_can_be_reapplied() -> None:
 
 
 @_V03_GAP
+def test_synchronized_handles_share_live_registry_updates() -> None:
+    """A registry revision must propagate to every synchronized handle."""
+    fig, axes = plt.subplots(2, 1)
+    try:
+        initial = pd.date_range("2024-01-01", periods=3)
+        for ax in axes:
+            ax.plot(initial, np.arange(len(initial), dtype=float))
+
+        left, right = gs.sync_dates(axes, mode="collapse")
+        new_date = pd.Timestamp("2024-01-04")
+        gs.dates(axes[0], data=[new_date])
+
+        assert new_date in left.observations
+        assert new_date in right.observations
+        assert left.loc(new_date) == right.loc(new_date)
+    finally:
+        plt.close(fig)
+
+
+@_V03_GAP
 def test_single_observation_mapping_round_trips_outside_the_knot() -> None:
     """Forward and inverse rules must agree for a one-observation registry."""
     fig, ax = plt.subplots()
@@ -174,5 +195,19 @@ def test_externally_removed_caption_is_safe_to_replace(
 
         handle.caption(add=True)
         assert len(ax.texts) == 1
+    finally:
+        plt.close(fig)
+
+
+@_V03_GAP
+def test_artist_state_uses_weak_object_keys(dates: pd.DatetimeIndex) -> None:
+    """Removed artists must not leave ID-keyed geometry that can be misapplied."""
+    fig, ax = plt.subplots()
+    try:
+        ax.plot(dates, np.arange(len(dates), dtype=float))
+        handle = gs.dates(ax).collapse()
+
+        assert isinstance(handle._original_x, WeakKeyDictionary)
+        assert all(artist in ax.lines for artist in handle._original_x)
     finally:
         plt.close(fig)
