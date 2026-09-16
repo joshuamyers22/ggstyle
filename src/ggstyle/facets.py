@@ -1,24 +1,39 @@
-"""Pure dataframe partition and layout planning for native facets."""
+"""Dataframe partition planning and callback-based native facets."""
 
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from contextlib import nullcontext
 from dataclasses import dataclass
+from numbers import Real
 from types import MappingProxyType
-from typing import Any, Literal, cast
+from typing import Any, Literal, TypeAlias, cast
 
+import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 
 from ._frames import column
 from ._inspection import describe, json_safe
 from ._semantic_scales import _is_missing
+from .theme import ThemeSpec, theme_spec
+from .theme import theme as theme_context
 
-__all__ = ["FacetPanel", "FacetPlan", "facet_plan"]
+__all__ = [
+    "FacetCallbackError",
+    "FacetGrid",
+    "FacetPanel",
+    "FacetPlan",
+    "facet_plan",
+    "facets",
+]
 
 FacetScales = Literal["fixed", "free_x", "free_y", "free"]
 FacetMissingPolicy = Literal["drop", "keep", "raise"]
 FacetLayout = Literal["wrap", "grid"]
+FacetCallback: TypeAlias = Callable[[Any, Axes], object]
 
 _ABSENT = object()
 _MISSING = object()
@@ -178,6 +193,192 @@ class FacetPlan:
     def describe(self) -> str:
         """
         Return the facet plan as deterministic formatted strict JSON.
+
+        Returns
+        -------
+        str
+            Strict JSON containing the same values as :meth:`as_dict`.
+        """
+
+        return describe(self.as_dict())
+
+
+class FacetCallbackError(RuntimeError):
+    """
+    Report a callback failure with the responsible facet panel.
+
+    Parameters
+    ----------
+    panel : FacetPanel
+        Panel whose callback invocation failed.
+    completed_panels : int
+        Number of panel callbacks completed during the current mapping pass.
+
+    Notes
+    -----
+    The original exception remains available as ``__cause__``. Callback code can make
+    arbitrary changes to native Matplotlib axes, so changes made before the failure are
+    left visible rather than incompletely guessed at and rolled back.
+    """
+
+    def __init__(self, panel: FacetPanel, completed_panels: int) -> None:
+        self.panel_index = panel.index
+        self.panel_values = MappingProxyType(dict(panel.values))
+        self.completed_panels = completed_panels
+        super().__init__(
+            f"facet callback failed for panel {panel.index} "
+            f"with values {dict(panel.values)!r} after {completed_panels} "
+            "completed panel(s)"
+        )
+
+
+def _invoke_callback(
+    callback: FacetCallback,
+    panel_data: object,
+    axes: Axes,
+    panel: FacetPanel,
+    completed: int,
+) -> None:
+    try:
+        callback(_copy_data(panel_data), axes)
+    except Exception as error:
+        raise FacetCallbackError(panel, completed) from error
+
+
+class FacetGrid:
+    """
+    Own native Matplotlib axes for callback-rendered wrap or grid facets.
+
+    Instances are created by :func:`facets`. The source data is partitioned into
+    defensive panel snapshots before any figure is created. Each :meth:`map` call gives
+    its callback a fresh panel copy and the corresponding ordinary Matplotlib axes.
+
+    Parameters
+    ----------
+    figure : matplotlib.figure.Figure
+        Figure containing the facet axes.
+    axes : tuple of matplotlib.axes.Axes
+        Active panel axes in row-major plan order; unused rectangular cells are absent.
+    plan : FacetPlan
+        Immutable partition and layout plan used to create the grid.
+    panel_data : tuple of object
+        Internal defensive dataframe subsets aligned with ``plan.panels``.
+    theme_name : str or None
+        Applied ggstyle theme name, or ``None`` when current Matplotlib settings were
+        used.
+    """
+
+    def __init__(
+        self,
+        figure: Figure,
+        axes: tuple[Axes, ...],
+        plan: FacetPlan,
+        panel_data: tuple[object, ...],
+        theme_name: str | None,
+    ) -> None:
+        if len(axes) != len(plan.panels) or len(panel_data) != len(plan.panels):
+            raise ValueError("axes and panel data must align with every facet panel")
+        self._figure = figure
+        self._axes = tuple(axes)
+        self._plan = plan
+        self._panel_data = tuple(panel_data)
+        self._theme_name = theme_name
+        self._map_count = 0
+
+    @property
+    def figure(self) -> Figure:
+        """Return the native Matplotlib figure containing every panel."""
+
+        return self._figure
+
+    @property
+    def axes(self) -> tuple[Axes, ...]:
+        """Return active native Matplotlib axes in row-major panel order."""
+
+        return self._axes
+
+    @property
+    def plan(self) -> FacetPlan:
+        """Return the immutable partition and layout plan used by this grid."""
+
+        return self._plan
+
+    @property
+    def diagnostics(self) -> tuple[str, ...]:
+        """Return deterministic planning diagnostics for the rendered grid."""
+
+        return self._plan.diagnostics
+
+    @property
+    def map_count(self) -> int:
+        """Return the number of complete callback mapping passes."""
+
+        return self._map_count
+
+    def map(self, callback: FacetCallback) -> FacetGrid:
+        """
+        Invoke a plotting callback once for every panel and return this grid.
+
+        Parameters
+        ----------
+        callback : callable
+            Called as ``callback(panel_data, ax)`` in row-major order. ``panel_data`` is
+            a fresh defensive subset with the same dataframe type for pandas and Polars.
+            Its return value is intentionally ignored; callbacks draw on ``ax``.
+
+        Returns
+        -------
+        FacetGrid
+            This grid, enabling repeated mapping passes for multiple layers.
+
+        Raises
+        ------
+        TypeError
+            If ``callback`` is not callable.
+        FacetCallbackError
+            If a panel callback fails. The original exception is chained and the error
+            identifies the panel and number of completed calls.
+
+        Notes
+        -----
+        Arbitrary callback mutations cannot be rolled back safely. When a callback
+        fails, panels completed earlier in that pass remain changed and ``map_count`` is
+        not incremented. Defensive copies follow each dataframe library's copy semantics;
+        nested mutable Python objects stored inside cells may still share references.
+        """
+
+        if not callable(callback):
+            raise TypeError(f"callback must be callable, got {callback!r}")
+        aligned = zip(self._plan.panels, self._panel_data, self._axes, strict=True)
+        for completed, (panel, panel_data, axes) in enumerate(aligned):
+            _invoke_callback(callback, panel_data, axes, panel, completed)
+        self._map_count += 1
+        return self
+
+    def as_dict(self) -> dict[str, object]:
+        """
+        Return bounded strict-JSON inspection data for this grid.
+
+        Returns
+        -------
+        dict of str to object
+            Fresh containers describing the native grid, completed mapping passes,
+            applied theme, diagnostics, and its immutable facet plan. Live figures,
+            axes, callbacks, callback results, and source data are excluded.
+        """
+
+        return {
+            "diagnostics": list(self.diagnostics),
+            "kind": "facet_grid",
+            "map_count": self._map_count,
+            "panel_count": len(self._axes),
+            "plan": self._plan.as_dict(),
+            "theme": self._theme_name,
+        }
+
+    def describe(self) -> str:
+        """
+        Return the facet grid as deterministic formatted strict JSON.
 
         Returns
         -------
@@ -539,3 +740,297 @@ def facet_plan(
         dropped_rows=dropped_rows,
         diagnostics=diagnostics,
     )
+
+
+def _take_column(values: object, indices: Sequence[int], *, name: object) -> object:
+    if isinstance(values, (str, bytes)):
+        raise TypeError(f"mapping column {name!r} must be a sequence, not a string")
+    try:
+        size = len(cast(Any, values))
+    except TypeError as error:
+        raise TypeError(f"mapping column {name!r} must be a sized sequence") from error
+    positions = list(indices)
+    if isinstance(values, pd.Series):
+        return cast(Any, values).iloc[positions].copy(deep=True)
+    module = type(values).__module__.split(".")[0]
+    if module == "polars" and type(values).__name__ == "Series":
+        return cast(Any, values).gather(positions)
+    if module == "pyarrow":
+        return cast(Any, values).take(positions)
+    try:
+        taken = cast(Any, values)[positions]
+    except (IndexError, KeyError, TypeError):
+        try:
+            taken = [cast(Any, values)[index] for index in positions]
+        except (IndexError, KeyError, TypeError) as error:
+            raise TypeError(
+                f"mapping column {name!r} does not support positional selection"
+            ) from error
+    if len(cast(Any, values)) != size:  # pragma: no cover - hostile custom sequence
+        raise RuntimeError(f"mapping column {name!r} changed during facet partitioning")
+    copier = getattr(taken, "copy", None)
+    if callable(copier):
+        try:
+            return copier()
+        except TypeError:
+            pass
+    return list(taken)
+
+
+def _subset_data(data: object, indices: Sequence[int], *, input_rows: int) -> object:
+    positions = list(indices)
+    if isinstance(data, pd.DataFrame):
+        return data.iloc[positions].copy(deep=True)
+    module = type(data).__module__.split(".")[0]
+    if module == "polars" and type(data).__name__ == "DataFrame":
+        return cast(Any, data).gather(positions)
+    if module == "pyarrow" and type(data).__name__ == "Table":
+        return cast(Any, data).take(positions)
+    if isinstance(data, Mapping):
+        result: dict[object, object] = {}
+        for name, values in data.items():
+            try:
+                size = len(cast(Any, values))
+            except TypeError as error:
+                raise TypeError(
+                    f"mapping column {name!r} must be a sized sequence"
+                ) from error
+            if size != input_rows:
+                raise ValueError(
+                    "all mapping columns must match the facet row count; "
+                    f"column {name!r} has {size} row(s), expected {input_rows}"
+                )
+            result[name] = _take_column(values, positions, name=name)
+        return result
+    iloc = getattr(data, "iloc", None)
+    if iloc is not None:
+        try:
+            subset = iloc[positions]
+        except (IndexError, KeyError, TypeError) as error:
+            raise TypeError(
+                f"{type(data).__name__} does not support positional row selection"
+            ) from error
+        copier = getattr(subset, "copy", None)
+        if callable(copier):
+            try:
+                return copier(deep=True)
+            except TypeError:
+                return copier()
+        return subset
+    raise TypeError(
+        "facet rendering requires a pandas, Polars, or Arrow dataframe, a mapping "
+        "of equal-length columns, or a dataframe with positional iloc selection"
+    )
+
+
+def _copy_data(data: object) -> object:
+    if isinstance(data, pd.DataFrame):
+        return data.copy(deep=True)
+    module = type(data).__module__.split(".")[0]
+    if module == "polars" and type(data).__name__ == "DataFrame":
+        return cast(Any, data).clone()
+    if module == "pyarrow" and type(data).__name__ == "Table":
+        return data
+    if isinstance(data, Mapping):
+        return {
+            name: _take_column(values, range(len(cast(Any, values))), name=name)
+            for name, values in data.items()
+        }
+    copier = getattr(data, "copy", None)
+    if callable(copier):
+        try:
+            return copier(deep=True)
+        except TypeError:
+            return copier()
+    return data
+
+
+def _figure_size(value: object) -> tuple[float, float] | None:
+    if value is None:
+        return None
+    if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
+        raise TypeError("figsize must be a two-item sequence of positive real numbers")
+    dimensions = tuple(value)
+    if len(dimensions) != 2:
+        raise ValueError("figsize must contain exactly width and height")
+    resolved: list[float] = []
+    for dimension in dimensions:
+        if isinstance(dimension, bool) or not isinstance(dimension, Real):
+            raise TypeError(
+                "figsize must be a two-item sequence of positive real numbers"
+            )
+        number = float(dimension)
+        if not math.isfinite(number) or number <= 0:
+            raise ValueError("figsize dimensions must be finite and positive")
+        resolved.append(number)
+    return resolved[0], resolved[1]
+
+
+def _subplot_parameters(value: object) -> dict[str, object]:
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise TypeError(f"subplot_kw must be a mapping or None, got {value!r}")
+    if not all(isinstance(key, str) for key in value):
+        raise TypeError("subplot_kw keys must be strings")
+    return dict(cast(Mapping[str, object], value))
+
+
+def _sharing(scales: FacetScales) -> tuple[bool, bool]:
+    return scales not in ("free_x", "free"), scales not in ("free_y", "free")
+
+
+def _theme_name(value: str | ThemeSpec | None) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, ThemeSpec):
+        return value.name
+    if isinstance(value, str):
+        return theme_spec(value).name
+    raise TypeError(f"theme must be a string, ThemeSpec, or None, got {value!r}")
+
+
+def _level_title(value: object) -> str:
+    return "NA" if value is None else str(value)
+
+
+def _panel_title(values: Mapping[str, object]) -> str:
+    return " | ".join(_level_title(value) for value in values.values())
+
+
+def _panel_label(values: Mapping[str, object]) -> str:
+    return ", ".join(
+        f"{variable}: {_level_title(value)}" for variable, value in values.items()
+    )
+
+
+def facets(
+    data: object,
+    *,
+    row: str | None = None,
+    col: str | None = None,
+    wrap: int | None = None,
+    scales: FacetScales = "fixed",
+    row_order: Sequence[object] | None = None,
+    col_order: Sequence[object] | None = None,
+    include_unobserved: bool = False,
+    missing: FacetMissingPolicy = "drop",
+    max_panels: int = 64,
+    theme: str | ThemeSpec | None = None,
+    figsize: Sequence[Real] | None = None,
+    subplot_kw: Mapping[str, object] | None = None,
+) -> FacetGrid:
+    """
+    Create callback-ready wrap or grid facets on native Matplotlib axes.
+
+    Parameters
+    ----------
+    data : dataframe-like
+        Pandas, Polars, or Arrow dataframe; equal-length column mapping; or dataframe
+        supporting positional ``iloc`` selection. The input is never mutated.
+    row, col : str or None, optional
+        Columns assigned to grid rows and columns. At least one is required and they
+        must be distinct. A wrap layout requires ``col`` and no ``row``.
+    wrap : int or None, optional
+        Positive maximum number of columns for a one-variable ``col`` wrap. ``None``
+        creates a row, column, or two-variable grid.
+    scales : {"fixed", "free_x", "free_y", "free"}, default "fixed"
+        Native Matplotlib axis-sharing policy. Shared collapsed-date registry training is
+        deferred to the dedicated date-integration workstream.
+    row_order, col_order : sequence or None, optional
+        Explicit facet-level orders. Observed values outside them are rejected.
+    include_unobserved : bool, default False
+        Retain explicit or categorical levels absent from the observed data.
+    missing : {"drop", "keep", "raise"}, default "drop"
+        Drop, retain as an ``NA`` panel, or reject missing facet values.
+    max_panels : int, default 64
+        Positive panel-count safety limit checked before figure creation.
+    theme : str, ThemeSpec, or None, optional
+        Scoped ggstyle theme used only while creating the figure. ``None`` preserves the
+        caller's current Matplotlib configuration.
+    figsize : sequence of two real numbers or None, optional
+        Figure width and height in inches. Both values must be finite and positive.
+    subplot_kw : mapping or None, optional
+        Keyword arguments forwarded to each native Matplotlib subplot.
+
+    Returns
+    -------
+    FacetGrid
+        Callback-ready grid exposing its native figure, row-major axes, and immutable
+        partition plan.
+
+    Notes
+    -----
+    Each active panel receives a native axes title containing its facet values in
+    row-then-column order. Unused wrap cells are removed from the figure. Use
+    ``grid.map(lambda panel, ax: ...)`` to add one or more plotting layers.
+
+    Examples
+    --------
+    >>> import matplotlib.pyplot as plt
+    >>> import ggstyle as gs
+    >>> grid = gs.facets(
+    ...     {"group": ["A", "A", "B"], "x": [1, 2, 1], "y": [2, 3, 4]},
+    ...     col="group",
+    ...     wrap=2,
+    ... )
+    >>> _ = grid.map(lambda panel, ax: ax.plot(panel["x"], panel["y"]))
+    >>> len(grid.axes)
+    2
+    >>> plt.close(grid.figure)
+    >>> grid = gs.facets(
+    ...     {"region": ["N", "S"], "metric": ["A", "B"]},
+    ...     row="region",
+    ...     col="metric",
+    ... )
+    >>> grid.plan.shape
+    (2, 2)
+    >>> plt.close(grid.figure)
+    """
+
+    size = _figure_size(figsize)
+    subplot_parameters = _subplot_parameters(subplot_kw)
+    resolved_theme = _theme_name(theme)
+    plan = facet_plan(
+        data,
+        row=row,
+        col=col,
+        wrap=wrap,
+        scales=scales,
+        row_order=row_order,
+        col_order=col_order,
+        include_unobserved=include_unobserved,
+        missing=missing,
+        max_panels=max_panels,
+    )
+    panel_data = tuple(
+        _subset_data(data, panel.indices, input_rows=plan.input_rows)
+        for panel in plan.panels
+    )
+    sharex, sharey = _sharing(plan.scales)
+    context = nullcontext() if theme is None else theme_context(theme)
+    figure: Figure | None = None
+    try:
+        with context:
+            figure = plt.figure(figsize=size, layout="constrained")
+            created = figure.subplots(
+                plan.nrows,
+                plan.ncols,
+                sharex=sharex,
+                sharey=sharey,
+                squeeze=False,
+                subplot_kw=subplot_parameters,
+            )
+            all_axes = tuple(cast(Any, created).flat)
+            active_axes = all_axes[: len(plan.panels)]
+            for unused in all_axes[len(plan.panels) :]:
+                figure.delaxes(unused)
+            for panel, axes in zip(plan.panels, active_axes, strict=True):
+                title = _panel_title(panel.values)
+                axes.set_title(title)
+                axes.set_label(_panel_label(panel.values))
+    except Exception:
+        if figure is not None:
+            plt.close(figure)
+        raise
+    return FacetGrid(figure, active_axes, plan, panel_data, resolved_theme)

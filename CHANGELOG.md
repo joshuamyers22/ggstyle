@@ -8,6 +8,15 @@ This project follows [Semantic Versioning](https://semver.org/).
   and row/column grids. Plans define stable categorical ordering, observed/unobserved and
   missing-value policy, empty panels, fixed/free scale intent, strict-JSON inspection,
   pandas/Polars parity, and a configurable panel-count safety limit without rendering.
+- Add callback-based `facets()` wrap rendering and `FacetGrid` on ordinary Matplotlib
+  figures and axes. Panel callbacks receive defensive pandas/Polars-preserving subsets;
+  grids expose fixed/free native axis sharing, scoped themes, plain accessible panel
+  titles, bounded inspection, deterministic unused-cell removal, and contextual callback
+  failures without mutating source data.
+- Extend `facets()` to row-only, column-only, and two-variable grid rendering. Grid axes
+  follow explicit or categorical level order, retain Cartesian empty combinations, map
+  correctly typed empty subsets, and expose deterministic row-then-column panel titles
+  and accessibility labels with pandas/Polars parity.
 
 ## 0.5.0 - 2026-09-15
 

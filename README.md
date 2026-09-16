@@ -170,7 +170,7 @@ The summary includes artist counts and types, trained scale descriptions, layer 
 and diagnostics without serializing axes or live artists. Concrete results still expose
 their geometry-specific native objects directly.
 
-### Plan facets without rendering
+### Plan or render facets
 
 The v0.6 foundation can validate dataframe partitions and small-multiple layout before a
 figure is created:
@@ -187,8 +187,38 @@ plan = gs.facet_plan(
 
 The immutable plan records stable level ordering, row-major panel positions, source-row
 indices, empty panels, missing-value policy, and the fixed/free scale policy. Its
-`as_dict()` and `describe()` representations are bounded strict JSON. PR22 is planning
-only; callback-based native rendering follows in PR23.
+`as_dict()` and `describe()` representations are bounded strict JSON.
+
+Create ordinary Matplotlib axes from the same policy and map one or more callbacks over
+defensive dataframe subsets:
+
+```python
+grid = gs.facets(
+    df,
+    col="series",
+    wrap=3,
+    scales="free_y",
+    theme="minimal",
+)
+grid.map(lambda panel, ax: gs.line(panel, x="date", y="value", ax=ax))
+```
+
+Use `row=` and `col=` without `wrap` for a Cartesian grid:
+
+```python
+grid = gs.facets(
+    df,
+    row="region",
+    col="metric",
+    row_order=("North", "South"),
+    include_unobserved=True,
+)
+```
+
+`grid.figure` and the row-major `grid.axes` remain ordinary Matplotlib objects. Native
+fixed/free sharing is applied during subplot construction, while shared collapsed-date
+registry training remains part of the later date-integration workstream. Styled strips,
+shared labels, and collected guides remain deliberately separate follow-on work.
 
 Replace a multi-series line legend with labels at the final visible data points:
 

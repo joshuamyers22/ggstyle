@@ -49,6 +49,61 @@ def main() -> None:
     if json.loads(facet.describe()) != facet_payload:
         raise RuntimeError("installed wheel produced inconsistent facet inspection")
 
+    facet_grid = gs.facets(
+        {
+            "segment": ["B", "A", "B"],
+            "x": [1, 1, 2],
+            "value": [1, 2, 3],
+        },
+        col="segment",
+        wrap=2,
+        scales="free_y",
+    )
+    try:
+        facet_grid.map(
+            lambda panel, axes: gs.line(
+                panel,
+                x="x",
+                y="value",
+                style={"color": "#4477AA"},
+                ax=axes,
+            )
+        )
+        if len(facet_grid.axes) != 2 or facet_grid.map_count != 1:
+            raise RuntimeError("installed wheel produced an invalid facet grid")
+        facet_grid.figure.canvas.draw()
+        grid_payload = facet_grid.as_dict()
+        json.dumps(grid_payload, allow_nan=False)
+        if json.loads(facet_grid.describe()) != grid_payload:
+            raise RuntimeError("installed wheel produced inconsistent grid inspection")
+    finally:
+        plt.close(facet_grid.figure)
+
+    grid_facet = gs.facets(
+        {
+            "region": ["North", "South", "North"],
+            "metric": ["Value", "Value", "Rate"],
+            "value": [1, 2, 3],
+        },
+        row="region",
+        col="metric",
+    )
+    try:
+        grid_rows: list[int] = []
+        grid_facet.map(lambda panel, axes: grid_rows.append(len(panel["value"])))
+        if grid_facet.plan.shape != (2, 2) or grid_rows != [1, 1, 1, 0]:
+            raise RuntimeError("installed wheel produced invalid grid facet partitions")
+        if [axes.get_title() for axes in grid_facet.axes] != [
+            "North | Value",
+            "North | Rate",
+            "South | Value",
+            "South | Rate",
+        ]:
+            raise RuntimeError("installed wheel produced invalid grid facet order")
+        grid_facet.figure.canvas.draw()
+    finally:
+        plt.close(grid_facet.figure)
+
     report_theme = gs.theme_spec(
         "minimal", base_size=11, overrides={"axes.titlesize": 14}
     )

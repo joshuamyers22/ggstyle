@@ -33,6 +33,11 @@ levels, fixed/free scale policy, layout shape, per-panel row counts, missing-row
 diagnostics, and the panel safety limit. Source data and the concrete positional indices
 used by later rendering are omitted from the bounded JSON representation.
 
+:func:`ggstyle.facets` returns a :class:`ggstyle.FacetGrid` whose matching ``as_dict()``
+and ``describe()`` methods nest that plan and add only the applied theme, active panel
+count, diagnostics, and number of completed callback passes. Live figures, axes,
+callbacks, callback results, and dataframe contents are excluded.
+
 Finishing plans
 ---------------
 

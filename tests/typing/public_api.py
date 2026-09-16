@@ -126,6 +126,30 @@ def check_facet_plan_types(frame: pd.DataFrame) -> None:
     assert_type(plan.describe(), str)
 
 
+def check_facet_grid_types(frame: pd.DataFrame) -> None:
+    """Assert callback wrap rendering retains native Matplotlib object types."""
+    grid = assert_type(
+        gs.facets(frame, col="series", wrap=3, scales="free_y"),
+        gs.FacetGrid,
+    )
+
+    def draw(panel: pd.DataFrame, axes: Axes) -> object:
+        return axes.plot(panel["date"], panel["value"])
+
+    assert_type(grid.figure, Figure)
+    assert_type(grid.axes, tuple[Axes, ...])
+    assert_type(grid.plan, gs.FacetPlan)
+    assert_type(grid.diagnostics, tuple[str, ...])
+    assert_type(grid.map_count, int)
+    assert_type(grid.map(draw), gs.FacetGrid)
+    assert_type(grid.as_dict(), dict[str, object])
+    assert_type(grid.describe(), str)
+    assert_type(
+        gs.facets(frame, row="region", col="series", wrap=None),
+        gs.FacetGrid,
+    )
+
+
 def check_line_types(ax: Axes, frame: pd.DataFrame) -> None:
     """Assert concrete line results and the trained-scale inspection boundary."""
     result = assert_type(

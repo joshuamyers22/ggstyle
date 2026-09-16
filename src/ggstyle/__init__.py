@@ -1,8 +1,9 @@
 """ggstyle -- a ggplot2-flavoured plotting layer for Python.
 
 ggstyle combines production-safe collapsed date coordinates with transactional plot
-finishing and narrow tidy-data line, point, and ribbon helpers. It remains a layer over
-ordinary Matplotlib rather than a general grammar compiler.
+finishing, narrow tidy-data line, point, and ribbon helpers, and callback-based native
+facets. It remains a layer over ordinary Matplotlib rather than a general grammar
+compiler.
 
     import matplotlib.pyplot as plt
     import ggstyle as gs
@@ -19,7 +20,14 @@ from importlib.metadata import version
 from ._cadence import Cadence
 from .dates import AxisSummary, DateAxis, DateDiscoveryError, dates, sync_dates
 from .end_labels import EndLabelSpec, end_labels
-from .facets import FacetPanel, FacetPlan, facet_plan
+from .facets import (
+    FacetCallbackError,
+    FacetGrid,
+    FacetPanel,
+    FacetPlan,
+    facet_plan,
+    facets,
+)
 from .finish import AxisSpec, FinishPlan, FinishResult, axis, finish
 from .formats import (
     NumericLabeller,
@@ -60,6 +68,8 @@ __all__ = [
     "DateDiscoveryError",
     "DiscreteScale",
     "EndLabelSpec",
+    "FacetCallbackError",
+    "FacetGrid",
     "FacetPanel",
     "FacetPlan",
     "FinishPlan",
@@ -80,6 +90,7 @@ __all__ = [
     "dates",
     "end_labels",
     "facet_plan",
+    "facets",
     "finish",
     "guides",
     "label_currency",
