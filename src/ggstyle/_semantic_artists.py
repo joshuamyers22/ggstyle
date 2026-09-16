@@ -5,8 +5,8 @@ from __future__ import annotations
 import warnings
 import weakref
 from collections.abc import Mapping, Sequence
-from copy import copy
 from dataclasses import dataclass, field
+from itertools import tee
 from types import MappingProxyType
 from typing import Any, Literal, cast
 from weakref import WeakKeyDictionary
@@ -271,7 +271,11 @@ def _capture_cycle(generator: object) -> _CycleSnapshot:
     old_cycle = getattr(generator, "prop_cycler", None)
     modern_cycle = getattr(generator, "_prop_cycle", None)
     index = getattr(modern_cycle, "_idx", getattr(generator, "_idx", None))
-    return _CycleSnapshot(index, copy(old_cycle) if old_cycle is not None else None)
+    if old_cycle is None:
+        return _CycleSnapshot(index, None)
+    active_cycle, saved_cycle = tee(old_cycle)
+    cast(Any, generator).prop_cycler = active_cycle
+    return _CycleSnapshot(index, saved_cycle)
 
 
 def capture_axes(ax: Axes) -> AxesSnapshot:

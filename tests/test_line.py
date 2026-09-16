@@ -345,7 +345,13 @@ def test_rollback_restores_axis_units_formatters_and_property_cycle(
     with pytest.raises(RuntimeError, match="renderer failed"):
         gs.line(frame, x="date", y="value", group="group", ax=ax)
 
-    assert ax.xaxis.get_converter() is None
+    get_converter = getattr(ax.xaxis, "get_converter", None)
+    converter = (
+        get_converter()
+        if callable(get_converter)
+        else getattr(ax.xaxis, "converter", None)
+    )
+    assert converter is None
     assert ax.xaxis.get_units() is None
     assert ax.xaxis.get_major_locator() is original_locator
     assert ax.xaxis.get_major_formatter() is original_formatter
