@@ -4,6 +4,11 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Add pure immutable `facet_plan()` partition and layout planning for one-variable wraps
+  and row/column grids. Plans define stable categorical ordering, observed/unobserved and
+  missing-value policy, empty panels, fixed/free scale intent, strict-JSON inspection,
+  pandas/Polars parity, and a configurable panel-count safety limit without rendering.
+
 ## 0.5.0 - 2026-09-15
 
 - Select narrow native line, point, and ribbon helpers for the v0.5 semantic-mapping

@@ -24,6 +24,15 @@ colorbar counts and titles. Both are bounded strict-JSON representations: the or
 axes and live artists remain available on the concrete result but are never serialized.
 Each call returns fresh containers suitable for logs and snapshot tests.
 
+Facet plans
+-----------
+
+:func:`ggstyle.facet_plan` exposes dataframe partitioning and layout decisions before any
+figure exists. Its :class:`ggstyle.FacetPlan` inspection contains variables, resolved
+levels, fixed/free scale policy, layout shape, per-panel row counts, missing-row
+diagnostics, and the panel safety limit. Source data and the concrete positional indices
+used by later rendering are omitted from the bounded JSON representation.
+
 Finishing plans
 ---------------
 

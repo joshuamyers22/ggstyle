@@ -5,6 +5,17 @@ The top-level API contains narrow semantic rendering, date-axis semantics,
 publication-finishing values, figure export, numeric labels, palettes, and opt-in themes.
 Internal modules are not compatibility guarantees.
 
+Facet planning
+--------------
+
+.. autofunction:: ggstyle.facet_plan
+
+.. autoclass:: ggstyle.FacetPlan
+   :members: as_dict, describe, shape
+
+.. autoclass:: ggstyle.FacetPanel
+   :members: as_dict, empty
+
 Semantic rendering
 ------------------
 

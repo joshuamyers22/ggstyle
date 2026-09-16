@@ -109,6 +109,23 @@ def check_finish_types(ax: Axes, dry_run: bool) -> None:
     assert_type(gs.finish(ax, dry_run=dry_run), gs.FinishPlan | gs.FinishResult)
 
 
+def check_facet_plan_types(frame: pd.DataFrame) -> None:
+    """Assert pure facet planning retains useful immutable result types."""
+    plan = assert_type(
+        gs.facet_plan(frame, col="series", wrap=3, scales="free_y"),
+        gs.FacetPlan,
+    )
+    assert_type(plan.shape, tuple[int, int])
+    assert_type(plan.panels, tuple[gs.FacetPanel, ...])
+    panel = plan.panels[0]
+    assert_type(panel.values, Mapping[str, object])
+    assert_type(panel.indices, tuple[int, ...])
+    assert_type(panel.empty, bool)
+    assert_type(panel.as_dict(), dict[str, object])
+    assert_type(plan.as_dict(), dict[str, object])
+    assert_type(plan.describe(), str)
+
+
 def check_line_types(ax: Axes, frame: pd.DataFrame) -> None:
     """Assert concrete line results and the trained-scale inspection boundary."""
     result = assert_type(

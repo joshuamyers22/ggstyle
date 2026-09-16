@@ -34,6 +34,21 @@ def main() -> None:
     else:
         raise RuntimeError("installed wheel synthesized a ninth qualitative color")
 
+    facet = gs.facet_plan(
+        {"segment": ["B", "A", "B"]},
+        col="segment",
+        wrap=2,
+    )
+    if facet.shape != (1, 2) or [panel.indices for panel in facet.panels] != [
+        (0, 2),
+        (1,),
+    ]:
+        raise RuntimeError("installed wheel produced an invalid facet plan")
+    facet_payload = facet.as_dict()
+    json.dumps(facet_payload, allow_nan=False)
+    if json.loads(facet.describe()) != facet_payload:
+        raise RuntimeError("installed wheel produced inconsistent facet inspection")
+
     report_theme = gs.theme_spec(
         "minimal", base_size=11, overrides={"axes.titlesize": 14}
     )

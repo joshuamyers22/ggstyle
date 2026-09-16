@@ -19,6 +19,7 @@ from importlib.metadata import version
 from ._cadence import Cadence
 from .dates import AxisSummary, DateAxis, DateDiscoveryError, dates, sync_dates
 from .end_labels import EndLabelSpec, end_labels
+from .facets import FacetPanel, FacetPlan, facet_plan
 from .finish import AxisSpec, FinishPlan, FinishResult, axis, finish
 from .formats import (
     NumericLabeller,
@@ -59,6 +60,8 @@ __all__ = [
     "DateDiscoveryError",
     "DiscreteScale",
     "EndLabelSpec",
+    "FacetPanel",
+    "FacetPlan",
     "FinishPlan",
     "FinishResult",
     "GuideResult",
@@ -76,6 +79,7 @@ __all__ = [
     "axis",
     "dates",
     "end_labels",
+    "facet_plan",
     "finish",
     "guides",
     "label_currency",

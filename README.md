@@ -170,6 +170,26 @@ The summary includes artist counts and types, trained scale descriptions, layer 
 and diagnostics without serializing axes or live artists. Concrete results still expose
 their geometry-specific native objects directly.
 
+### Plan facets without rendering
+
+The v0.6 foundation can validate dataframe partitions and small-multiple layout before a
+figure is created:
+
+```python
+plan = gs.facet_plan(
+    df,
+    col="series",
+    wrap=3,
+    scales="free_y",
+    max_panels=12,
+)
+```
+
+The immutable plan records stable level ordering, row-major panel positions, source-row
+indices, empty panels, missing-value policy, and the fixed/free scale policy. Its
+`as_dict()` and `describe()` representations are bounded strict JSON. PR22 is planning
+only; callback-based native rendering follows in PR23.
+
 Replace a multi-series line legend with labels at the final visible data points:
 
 ```python

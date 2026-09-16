@@ -20,6 +20,7 @@ Start here
    user-guide
    gallery
    semantic-gallery
+   facets
    inspection
    migration
    usability
