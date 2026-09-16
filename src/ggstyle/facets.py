@@ -11,13 +11,18 @@ from types import MappingProxyType
 from typing import Any, Literal, TypeAlias, cast
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
+from matplotlib.collections import PathCollection, PolyCollection
 from matplotlib.figure import Figure
 
+from . import _axis_data
 from ._frames import column
 from ._inspection import describe, json_safe
+from ._semantic_artists import date_handle
 from ._semantic_scales import _is_missing
+from .dates import DateAxis, sync_dates
 from .theme import ThemeSpec, theme_spec
 from .theme import theme as theme_context
 
@@ -33,6 +38,8 @@ __all__ = [
 FacetScales = Literal["fixed", "free_x", "free_y", "free"]
 FacetMissingPolicy = Literal["drop", "keep", "raise"]
 FacetLayout = Literal["wrap", "grid"]
+FacetDateMode = Literal["show", "collapse"]
+FacetDateLimits = Literal["union", "intersection"]
 FacetCallback: TypeAlias = Callable[[Any, Axes], object]
 
 _ABSENT = object()
@@ -245,6 +252,28 @@ def _invoke_callback(
         raise FacetCallbackError(panel, completed) from error
 
 
+def _axis_has_date_data(axes: Axes) -> bool:
+    handle = cast(DateAxis | None, date_handle(axes))
+    if handle is not None and len(handle.observations):
+        return True
+    if not _axis_data.has_date_converter(axes):
+        return False
+    for line in axes.lines:
+        if line.get_transform() is axes.transData:
+            values = np.ma.asarray(line.get_xdata(orig=False))
+            if values.size:
+                return True
+    for collection in axes.collections:
+        if isinstance(collection, PathCollection):
+            offsets = np.ma.asarray(collection.get_offsets())
+            if offsets.size and collection.get_offset_transform() is axes.transData:
+                return True
+        elif isinstance(collection, PolyCollection):
+            if collection.get_paths() and collection.get_transform() is axes.transData:
+                return True
+    return False
+
+
 class FacetGrid:
     """
     Own native Matplotlib axes for callback-rendered wrap or grid facets.
@@ -284,6 +313,9 @@ class FacetGrid:
         self._panel_data = tuple(panel_data)
         self._theme_name = theme_name
         self._map_count = 0
+        self._date_mode: FacetDateMode | None = None
+        self._date_limits: FacetDateLimits | None = None
+        self._date_axes: tuple[Axes, ...] = ()
 
     @property
     def figure(self) -> Figure:
@@ -314,6 +346,12 @@ class FacetGrid:
         """Return the number of complete callback mapping passes."""
 
         return self._map_count
+
+    @property
+    def date_handles(self) -> tuple[DateAxis | None, ...]:
+        """Return date handles aligned with :attr:`axes`, including empty slots."""
+
+        return tuple(cast(DateAxis | None, date_handle(axes)) for axes in self._axes)
 
     def map(self, callback: FacetCallback) -> FacetGrid:
         """
@@ -349,11 +387,134 @@ class FacetGrid:
 
         if not callable(callback):
             raise TypeError(f"callback must be callable, got {callback!r}")
-        aligned = zip(self._plan.panels, self._panel_data, self._axes, strict=True)
-        for completed, (panel, panel_data, axes) in enumerate(aligned):
-            _invoke_callback(callback, panel_data, axes, panel, completed)
+        deferred = tuple(
+            handle for handle in self.date_handles if handle is not None
+        ) if self._date_mode is not None else ()
+        for handle in deferred:
+            handle._begin_deferred_registry_refresh()
+        try:
+            aligned = zip(self._plan.panels, self._panel_data, self._axes, strict=True)
+            for completed, (panel, panel_data, axes) in enumerate(aligned):
+                _invoke_callback(callback, panel_data, axes, panel, completed)
+        finally:
+            for handle in deferred:
+                handle._end_deferred_registry_refresh()
+        if self._date_mode is not None and self._date_limits is not None:
+            self._refresh_dates()
         self._map_count += 1
         return self
+
+    def dates(
+        self,
+        *,
+        mode: FacetDateMode = "collapse",
+        limits: FacetDateLimits = "union",
+    ) -> FacetGrid:
+        """
+        Configure date coordinates according to this grid's fixed/free x policy.
+
+        Parameters
+        ----------
+        mode : {"show", "collapse"}, default "collapse"
+            Date coordinate mode applied to every date-bearing panel.
+        limits : {"union", "intersection"}, default "union"
+            Shared visible-range policy for fixed x scales. Each free x panel applies
+            the policy to its own observations independently.
+
+        Returns
+        -------
+        FacetGrid
+            This grid, enabling fluent date configuration and further mapping passes.
+
+        Raises
+        ------
+        ValueError
+            If options are invalid or no panel contains date observations.
+        DateDiscoveryError
+            If panel artists do not expose safe date observation provenance.
+
+        Notes
+        -----
+        ``fixed`` and ``free_y`` layouts use one shared revisioned observation registry.
+        ``free_x`` and ``free`` layouts retain independent per-panel registries. Empty
+        fixed-x panels have no handle but inherit the shared native x transform and limits.
+        Later successful :meth:`map` passes refresh the configured registry policy.
+        """
+
+        if mode not in ("show", "collapse"):
+            raise ValueError(f"mode must be 'show' or 'collapse', got {mode!r}")
+        if limits not in ("union", "intersection"):
+            raise ValueError(
+                f"limits must be 'union' or 'intersection', got {limits!r}"
+            )
+        candidates = tuple(axes for axes in self._axes if _axis_has_date_data(axes))
+        if not candidates:
+            raise ValueError(
+                "facet grid has no date observations; map date data before calling dates()"
+            )
+        self._apply_date_policy(
+            candidates,
+            mode=cast(FacetDateMode, mode),
+            limits=cast(FacetDateLimits, limits),
+        )
+        self._date_mode = cast(FacetDateMode, mode)
+        self._date_limits = cast(FacetDateLimits, limits)
+        self._date_axes = candidates
+        return self
+
+    def _apply_date_policy(
+        self,
+        axes: tuple[Axes, ...],
+        *,
+        mode: FacetDateMode,
+        limits: FacetDateLimits,
+    ) -> None:
+        existing = {
+            panel_axes: date_handle(panel_axes) for panel_axes in self._axes
+        }
+        try:
+            if self._plan.scales in ("fixed", "free_y"):
+                sync_dates(axes, mode=mode, limits=limits)
+            else:
+                for panel_axes in axes:
+                    sync_dates((panel_axes,), mode=mode, limits=limits)
+        except Exception:
+            for panel_axes, handle in existing.items():
+                created = date_handle(panel_axes)
+                if handle is None and created is not None:
+                    cast(DateAxis, created).dispose()
+            raise
+
+    def _refresh_dates(self) -> None:
+        assert self._date_mode is not None
+        assert self._date_limits is not None
+        candidates = tuple(axes for axes in self._axes if _axis_has_date_data(axes))
+        new_axes = tuple(axes for axes in candidates if axes not in self._date_axes)
+        if new_axes:
+            combined = tuple(
+                axes
+                for axes in self._axes
+                if axes in self._date_axes or axes in new_axes
+            )
+            self._apply_date_policy(
+                combined,
+                mode=self._date_mode,
+                limits=self._date_limits,
+            )
+            self._date_axes = combined
+            return
+        handles = tuple(
+            cast(DateAxis, date_handle(axes))
+            for axes in self._date_axes
+            if date_handle(axes) is not None
+        )
+        if not handles:
+            raise RuntimeError("configured facet date handles are no longer available")
+        if self._plan.scales in ("fixed", "free_y"):
+            handles[0].refresh()
+        else:
+            for handle in handles:
+                handle.refresh()
 
     def as_dict(self) -> dict[str, object]:
         """
@@ -368,6 +529,21 @@ class FacetGrid:
         """
 
         return {
+            "date": {
+                "configured": self._date_mode is not None,
+                "handle_count": sum(handle is not None for handle in self.date_handles),
+                "limits": self._date_limits,
+                "mode": self._date_mode,
+                "registry_groups": (
+                    0
+                    if not self._date_axes
+                    else (
+                        1
+                        if self._plan.scales in ("fixed", "free_y")
+                        else len(self._date_axes)
+                    )
+                ),
+            },
             "diagnostics": list(self.diagnostics),
             "kind": "facet_grid",
             "map_count": self._map_count,

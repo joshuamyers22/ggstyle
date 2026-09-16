@@ -38,6 +38,11 @@ and ``describe()`` methods nest that plan and add only the applied theme, active
 count, diagnostics, and number of completed callback passes. Live figures, axes,
 callbacks, callback results, and dataframe contents are excluded.
 
+The grid summary also reports whether facet date integration is configured, its mode and
+limit policy, the number of populated handles, and the number of independent registry
+groups. It does not serialize observation values; inspect the aligned native
+``grid.date_handles`` when interactive access to those dates is needed.
+
 Finishing plans
 ---------------
 

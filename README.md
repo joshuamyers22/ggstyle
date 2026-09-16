@@ -216,9 +216,19 @@ grid = gs.facets(
 ```
 
 `grid.figure` and the row-major `grid.axes` remain ordinary Matplotlib objects. Native
-fixed/free sharing is applied during subplot construction, while shared collapsed-date
-registry training remains part of the later date-integration workstream. Styled strips,
-shared labels, and collected guides remain deliberately separate follow-on work.
+fixed/free sharing is applied during subplot construction. Configure date panels after
+mapping their first layer:
+
+```python
+grid.dates(mode="collapse", limits="union")
+```
+
+Fixed x layouts (`"fixed"` and `"free_y"`) share one live observation registry, so the
+same date receives the same collapsed coordinate in every populated panel. Free x
+layouts retain independent registries and limits. Later `map()` calls refresh the chosen
+policy automatically. Empty fixed-x panels inherit the shared transform without
+pretending to own observations. Styled strips, shared labels, and collected guides
+remain deliberately separate follow-on work.
 
 Replace a multi-series line legend with labels at the final visible data points:
 

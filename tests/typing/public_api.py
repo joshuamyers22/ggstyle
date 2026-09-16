@@ -141,7 +141,9 @@ def check_facet_grid_types(frame: pd.DataFrame) -> None:
     assert_type(grid.plan, gs.FacetPlan)
     assert_type(grid.diagnostics, tuple[str, ...])
     assert_type(grid.map_count, int)
+    assert_type(grid.date_handles, tuple[gs.DateAxis | None, ...])
     assert_type(grid.map(draw), gs.FacetGrid)
+    assert_type(grid.dates(mode="collapse", limits="union"), gs.FacetGrid)
     assert_type(grid.as_dict(), dict[str, object])
     assert_type(grid.describe(), str)
     assert_type(

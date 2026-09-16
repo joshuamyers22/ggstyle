@@ -11,7 +11,7 @@ Facet planning and rendering
 .. autofunction:: ggstyle.facets
 
 .. autoclass:: ggstyle.FacetGrid
-   :members: figure, axes, plan, diagnostics, map_count, map, as_dict, describe
+   :members: figure, axes, plan, diagnostics, map_count, date_handles, map, dates, as_dict, describe
 
 .. autoexception:: ggstyle.FacetCallbackError
 

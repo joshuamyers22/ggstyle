@@ -7,6 +7,7 @@ from collections.abc import Mapping
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
 from matplotlib.axes import Axes
@@ -250,6 +251,38 @@ def test_scales_select_native_matplotlib_axis_sharing(
     assert first.get_shared_y_axes().joined(first, second) is share_y
 
 
+@pytest.mark.parametrize(
+    ("scales", "same_x", "same_y"),
+    [
+        ("fixed", True, True),
+        ("free_x", False, True),
+        ("free_y", True, False),
+        ("free", False, False),
+    ],
+)
+def test_fixed_and_free_policies_control_trained_coordinate_limits(
+    scales: str, same_x: bool, same_y: bool
+) -> None:
+    frame = pd.DataFrame(
+        {
+            "group": ["A", "A", "B", "B"],
+            "x": [0, 1, 10, 11],
+            "y": [0, 1, 100, 101],
+        }
+    )
+    grid = gs.facets(
+        frame,
+        col="group",
+        wrap=2,
+        scales=scales,  # type: ignore[arg-type]
+    )
+
+    grid.map(lambda panel, axes: axes.plot(panel["x"], panel["y"]))
+
+    assert np.allclose(grid.axes[0].get_xlim(), grid.axes[1].get_xlim()) is same_x
+    assert np.allclose(grid.axes[0].get_ylim(), grid.axes[1].get_ylim()) is same_y
+
+
 def test_mapping_subsets_include_all_columns_and_empty_panels() -> None:
     source = {
         "group": ["A", "B", "A"],
@@ -401,6 +434,320 @@ def test_polars_enum_order_controls_grid_and_unobserved_panels() -> None:
     assert row_counts == [1, 0, 0, 1, 0, 0]
 
 
+@pytest.mark.parametrize("scales", ["fixed", "free_y"])
+def test_fixed_x_date_facets_share_one_collapsed_registry(scales: str) -> None:
+    frame = pd.DataFrame(
+        {
+            "group": ["A", "A", "B", "B"],
+            "date": pd.to_datetime(
+                ["2024-01-01", "2024-01-03", "2024-01-02", "2024-01-04"]
+            ),
+            "value": [1, 2, 3, 4],
+        }
+    )
+    grid = gs.facets(
+        frame,
+        col="group",
+        wrap=2,
+        scales=scales,  # type: ignore[arg-type]
+    )
+
+    returned = grid.map(
+        lambda panel, axes: gs.line(panel, x="date", y="value", ax=axes)
+    ).dates()
+
+    left, right = grid.date_handles
+    assert returned is grid
+    assert left is not None and right is not None
+    expected = pd.date_range("2024-01-01", periods=4)
+    assert left.observations.equals(expected)
+    assert right.observations.equals(expected)
+    assert left.loc("2024-01-02") == right.loc("2024-01-02")
+    assert left.revision == right.revision
+    assert [axes.get_xscale() for axes in grid.axes] == [
+        "ggstyle-collapsed-date",
+        "ggstyle-collapsed-date",
+    ]
+    assert grid.as_dict()["date"] == {
+        "configured": True,
+        "handle_count": 2,
+        "limits": "union",
+        "mode": "collapse",
+        "registry_groups": 1,
+    }
+
+
+@pytest.mark.parametrize("scales", ["free_x", "free"])
+def test_free_x_date_facets_keep_independent_collapsed_registries(scales: str) -> None:
+    frame = pd.DataFrame(
+        {
+            "group": ["A", "A", "B", "B"],
+            "date": pd.to_datetime(
+                ["2024-01-01", "2024-01-03", "2024-02-01", "2024-02-04"]
+            ),
+            "value": [1, 2, 3, 4],
+        }
+    )
+    grid = gs.facets(
+        frame,
+        col="group",
+        wrap=2,
+        scales=scales,  # type: ignore[arg-type]
+    )
+
+    grid.map(
+        lambda panel, axes: gs.line(panel, x="date", y="value", ax=axes)
+    ).dates()
+
+    left, right = grid.date_handles
+    assert left is not None and right is not None
+    assert left.observations.equals(
+        pd.DatetimeIndex(["2024-01-01", "2024-01-03"])
+    )
+    assert right.observations.equals(
+        pd.DatetimeIndex(["2024-02-01", "2024-02-04"])
+    )
+    assert not np.allclose(grid.axes[0].get_xlim(), grid.axes[1].get_xlim())
+    assert grid.as_dict()["date"] == {
+        "configured": True,
+        "handle_count": 2,
+        "limits": "union",
+        "mode": "collapse",
+        "registry_groups": 2,
+    }
+
+
+def test_empty_fixed_date_panel_inherits_transform_without_a_handle() -> None:
+    frame = pd.DataFrame(
+        {
+            "group": pd.Categorical(["A", "A"], categories=["A", "B"]),
+            "date": pd.to_datetime(["2024-01-01", "2024-01-03"]),
+            "value": [1, 2],
+        }
+    )
+    grid = gs.facets(
+        frame,
+        col="group",
+        include_unobserved=True,
+        scales="fixed",
+    )
+
+    grid.map(
+        lambda panel, axes: gs.line(panel, x="date", y="value", ax=axes)
+    ).dates()
+
+    populated, empty = grid.date_handles
+    assert populated is not None
+    assert empty is None
+    assert grid.axes[1].get_xscale() == "ggstyle-collapsed-date"
+    assert np.allclose(grid.axes[0].get_xlim(), grid.axes[1].get_xlim())
+    assert grid.as_dict()["date"]["handle_count"] == 1  # type: ignore[index]
+
+
+def test_configured_fixed_dates_refresh_after_later_mapping_pass() -> None:
+    frame = pd.DataFrame(
+        {
+            "group": ["A", "B"],
+            "date": pd.to_datetime(["2024-01-01", "2024-01-02"]),
+            "value": [1, 2],
+        }
+    )
+    grid = gs.facets(frame, col="group", scales="fixed")
+    grid.map(
+        lambda panel, axes: gs.line(panel, x="date", y="value", ax=axes)
+    ).dates()
+    revisions = tuple(
+        handle.revision for handle in grid.date_handles if handle is not None
+    )
+    added = pd.Timestamp("2024-01-05")
+
+    def add_later(panel: object, axes: Axes) -> None:
+        if axes is grid.axes[0]:
+            gs.line(
+                {"date": [added], "value": [3]},
+                x="date",
+                y="value",
+                ax=axes,
+            )
+
+    grid.map(add_later)
+
+    handles = tuple(handle for handle in grid.date_handles if handle is not None)
+    assert all(added in handle.observations for handle in handles)
+    assert all(
+        handle.revision == revision + 1
+        for handle, revision in zip(handles, revisions, strict=True)
+    )
+    assert grid.map_count == 2
+
+
+def test_later_date_data_adopts_a_previously_empty_fixed_panel() -> None:
+    frame = pd.DataFrame(
+        {
+            "group": pd.Categorical(["A", "A"], categories=["A", "B"]),
+            "date": pd.to_datetime(["2024-01-01", "2024-01-02"]),
+            "value": [1, 2],
+        }
+    )
+    grid = gs.facets(
+        frame,
+        col="group",
+        include_unobserved=True,
+        scales="fixed",
+    )
+    grid.map(
+        lambda panel, axes: gs.line(panel, x="date", y="value", ax=axes)
+    ).dates()
+    assert grid.date_handles[1] is None
+    added = pd.Timestamp("2024-01-03")
+
+    def populate_empty(panel: object, axes: Axes) -> None:
+        if axes is grid.axes[1]:
+            axes.plot([added], [2])
+
+    grid.map(populate_empty)
+
+    left, right = grid.date_handles
+    assert left is not None and right is not None
+    expected = pd.date_range("2024-01-01", periods=3)
+    assert left.observations.equals(expected)
+    assert right.observations.equals(expected)
+    assert grid.as_dict()["date"]["handle_count"] == 2  # type: ignore[index]
+
+
+def test_callback_failure_releases_configured_date_refresh_deferral() -> None:
+    frame = pd.DataFrame(
+        {
+            "group": ["A", "B"],
+            "date": pd.to_datetime(["2024-01-01", "2024-01-02"]),
+            "value": [1, 2],
+        }
+    )
+    grid = gs.facets(frame, col="group", scales="fixed")
+    grid.map(
+        lambda panel, axes: gs.line(panel, x="date", y="value", ax=axes)
+    ).dates()
+
+    with pytest.raises(gs.FacetCallbackError):
+        grid.map(lambda panel, axes: (_ for _ in ()).throw(RuntimeError("failed")))
+
+    handle = grid.date_handles[0]
+    assert handle is not None
+    revision = handle.revision
+    handle.refresh()
+    assert handle.revision == revision + 1
+
+
+def test_date_configuration_validates_before_changing_numeric_grid() -> None:
+    grid = gs.facets(
+        {"group": ["A", "B"], "x": [1, 2], "y": [2, 3]},
+        col="group",
+    ).map(lambda panel, axes: axes.plot(panel["x"], panel["y"]))
+
+    with pytest.raises(ValueError, match="mode must be"):
+        grid.dates(mode="hidden")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="limits must be"):
+        grid.dates(limits="outer")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="no date observations"):
+        grid.dates()
+
+    assert grid.date_handles == (None, None)
+    assert grid.as_dict()["date"]["configured"] is False  # type: ignore[index]
+
+
+def test_failed_date_intersection_disposes_new_facet_handles() -> None:
+    frame = pd.DataFrame(
+        {
+            "group": ["A", "A", "B", "B"],
+            "date": pd.to_datetime(
+                ["2024-01-01", "2024-01-02", "2024-02-01", "2024-02-02"]
+            ),
+            "value": [1, 2, 3, 4],
+        }
+    )
+    grid = gs.facets(frame, col="group", scales="fixed").map(
+        lambda panel, axes: axes.plot(panel["date"], panel["value"])
+    )
+
+    with pytest.raises(ValueError, match="no overlapping"):
+        grid.dates(limits="intersection")
+
+    assert grid.date_handles == (None, None)
+    assert grid.as_dict()["date"]["configured"] is False  # type: ignore[index]
+
+
+def test_fixed_date_sync_failure_restores_independent_handles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    frame = pd.DataFrame(
+        {
+            "group": ["A", "A", "B", "B"],
+            "date": pd.to_datetime(
+                ["2024-01-01", "2024-01-03", "2024-02-01", "2024-02-04"]
+            ),
+            "value": [1, 2, 3, 4],
+        }
+    )
+    grid = gs.facets(frame, col="group", scales="fixed")
+    grid.map(lambda panel, axes: axes.plot(panel["date"], panel["value"]))
+    before = tuple(gs.dates(axes) for axes in grid.axes)
+    observations = tuple(handle.observations for handle in before)
+    original = before[1]._install_scale
+    calls = 0
+
+    def fail_once() -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("scale installation failed")
+        original()
+
+    monkeypatch.setattr(before[1], "_install_scale", fail_once)
+
+    with pytest.raises(RuntimeError, match="scale installation failed"):
+        grid.dates()
+
+    assert tuple(handle.mode for handle in before) == ("show", "show")
+    assert all(
+        handle.observations.equals(expected)
+        for handle, expected in zip(before, observations, strict=True)
+    )
+    assert grid.as_dict()["date"]["configured"] is False  # type: ignore[index]
+
+
+def test_polars_and_pandas_fixed_date_facets_have_matching_unions() -> None:
+    polars = pytest.importorskip("polars")
+    values = {
+        "group": ["A", "A", "B", "B"],
+        "date": [
+            pd.Timestamp("2024-01-01"),
+            pd.Timestamp("2024-01-03"),
+            pd.Timestamp("2024-01-02"),
+            pd.Timestamp("2024-01-04"),
+        ],
+        "value": [1, 2, 3, 4],
+    }
+
+    def render(frame: object) -> gs.FacetGrid:
+        return gs.facets(frame, col="group", scales="fixed").map(
+            lambda panel, axes: gs.line(panel, x="date", y="value", ax=axes)
+        ).dates()
+
+    pandas_grid = render(pd.DataFrame(values))
+    polars_grid = render(polars.DataFrame(values))
+
+    expected = pd.date_range("2024-01-01", periods=4)
+    assert all(
+        handle is not None and handle.observations.equals(expected)
+        for handle in pandas_grid.date_handles
+    )
+    assert all(
+        handle is not None and handle.observations.equals(expected)
+        for handle in polars_grid.date_handles
+    )
+    assert polars_grid.as_dict()["date"] == pandas_grid.as_dict()["date"]
+
+
 def test_callback_failure_reports_panel_context_and_preserves_cause() -> None:
     grid = gs.facets(
         {"group": ["A", "B", "C"], "value": [1, 2, 3]},
@@ -466,6 +813,13 @@ def test_render_inspection_is_bounded_strict_json_and_defensive() -> None:
     assert payload["map_count"] == 1
     assert payload["panel_count"] == 2
     assert payload["diagnostics"] == []
+    assert payload["date"] == {
+        "configured": False,
+        "handle_count": 0,
+        "limits": None,
+        "mode": None,
+        "registry_groups": 0,
+    }
     assert isinstance(payload["plan"], Mapping)
     assert "indices" not in json.dumps(payload)
     json.dumps(payload, allow_nan=False)

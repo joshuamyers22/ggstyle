@@ -17,6 +17,10 @@ This project follows [Semantic Versioning](https://semver.org/).
   follow explicit or categorical level order, retain Cartesian empty combinations, map
   correctly typed empty subsets, and expose deterministic row-then-column panel titles
   and accessibility labels with pandas/Polars parity.
+- Complete fixed/free coordinate semantics and add fluent `FacetGrid.dates()` integration.
+  Fixed x layouts share one transactionally refreshed collapsed-date registry; free x
+  panels retain independent registries; empty fixed panels inherit the native transform;
+  later mapping passes batch helper refreshes into one registry revision.
 
 ## 0.5.0 - 2026-09-15
 

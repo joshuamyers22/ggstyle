@@ -104,6 +104,43 @@ def main() -> None:
     finally:
         plt.close(grid_facet.figure)
 
+    date_facet = gs.facets(
+        pd.DataFrame(
+            {
+                "segment": ["A", "A", "B", "B"],
+                "date": pd.to_datetime(
+                    ["2024-01-01", "2024-01-03", "2024-01-02", "2024-01-04"]
+                ),
+                "value": [1, 2, 3, 4],
+            }
+        ),
+        col="segment",
+        wrap=2,
+        scales="fixed",
+    )
+    try:
+        date_facet.map(
+            lambda panel, axes: gs.line(
+                panel,
+                x="date",
+                y="value",
+                ax=axes,
+            )
+        ).dates()
+        date_handles = date_facet.date_handles
+        if any(handle is None for handle in date_handles):
+            raise RuntimeError("installed wheel omitted a populated facet date handle")
+        if any(
+            handle is None or len(handle.observations) != 4
+            for handle in date_handles
+        ):
+            raise RuntimeError("installed wheel produced an invalid shared date registry")
+        if date_facet.as_dict()["date"]["registry_groups"] != 1:
+            raise RuntimeError("installed wheel did not share fixed facet dates")
+        date_facet.figure.canvas.draw()
+    finally:
+        plt.close(date_facet.figure)
+
     report_theme = gs.theme_spec(
         "minimal", base_size=11, overrides={"axes.titlesize": 14}
     )

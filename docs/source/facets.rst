@@ -60,8 +60,33 @@ Earlier arbitrary callback mutations cannot be rolled back safely and remain vis
 
 ``scales`` wires native Matplotlib sharing at subplot construction: ``fixed`` shares both
 axes, ``free_x`` shares only y, ``free_y`` shares only x, and ``free`` shares neither.
-Shared collapsed-date registry training remains deferred to its dedicated integration
-workstream.
+
+Fixed, free, and collapsed date scales
+--------------------------------------
+
+After mapping the first date layer, configure facet-wide date behavior explicitly:
+
+.. code-block:: python
+
+   grid = gs.facets(frame, col="series", wrap=3, scales="fixed")
+   grid.map(lambda panel, ax: gs.line(panel, x="date", y="value", ax=ax))
+   grid.dates(mode="collapse", limits="union")
+
+``fixed`` and ``free_y`` keep x fixed, so every populated date panel joins one live,
+revisioned observation registry. Their observation union gives the same date the same
+collapsed coordinate everywhere. ``free_x`` and ``free`` train one registry and visible
+range per populated panel instead. ``date_handles`` is aligned with ``grid.axes`` and
+contains ``None`` for panels without date observations.
+
+Empty panels in a fixed-x layout inherit the shared Matplotlib transform and limits but
+do not receive a synthetic handle or observations. Calling ``dates()`` when no panel has
+date data raises rather than guessing that numeric coordinates represent dates.
+
+Once configured, later successful ``map()`` passes refresh the same policy automatically.
+Semantic helpers defer their per-layer refreshes during that pass, then the fixed group
+publishes one registry revision. Shared synchronization reuses the transactional
+``sync_dates`` boundary; a failed scale application restores prior modes, observations,
+limits, and registries and disposes handles created only for the failed request.
 
 Wrap plans
 ----------
@@ -116,7 +141,8 @@ panel descriptions are allocated; raising it is always an explicit caller decisi
 
 ``scales`` accepts ``"fixed"``, ``"free_x"``, ``"free_y"``, or ``"free"``. Pure plans
 record that policy without rendering; :func:`ggstyle.facets` applies native sharing for
-wrap layouts.
+wrap and grid layouts. :meth:`ggstyle.FacetGrid.dates` applies the corresponding date
+registry policy.
 
 Inspection and rendering boundary
 ---------------------------------
@@ -127,5 +153,5 @@ panels retain immutable positional ``indices`` used by the callback renderer.
 
 Pure planning still creates no figure, axes, artists, callbacks, or global state. PR23
 adds wrap rendering and PR24 extends the same callback boundary to grids. Shared date
-registries follow in PR25; styled strips, shared labels, and guide collection follow in
-PR26.
+registries and fixed/free coordinate semantics land in PR25; styled strips, shared
+labels, and guide collection follow in PR26.

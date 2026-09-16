@@ -156,6 +156,7 @@ class DateAxis:
 
         self._annotations: list[_annotations.Annotation] = []
         self._refreshing = False
+        self._deferred_registry_refreshes = 0
         self._trusted = False
         self._missing_values = 0
         self._disposed = False
@@ -986,6 +987,8 @@ class DateAxis:
         """
         if self._disposed:
             raise RuntimeError("cannot refresh a disposed DateAxis")
+        if self._deferred_registry_refreshes:
+            return self
         registry = self._registry
         candidate = registry.prepare()
         members = candidate.members
@@ -1030,6 +1033,18 @@ class DateAxis:
             for handle in members:
                 handle._refreshing = False
         return self
+
+    def _begin_deferred_registry_refresh(self) -> None:
+        """Defer public registry scans while a facet mapping batch is in progress."""
+
+        self._deferred_registry_refreshes += 1
+
+    def _end_deferred_registry_refresh(self) -> None:
+        """End one facet mapping deferral without implicitly scanning artists."""
+
+        if self._deferred_registry_refreshes <= 0:
+            raise RuntimeError("date registry refresh deferral is not active")
+        self._deferred_registry_refreshes -= 1
 
     def dispose(self) -> None:
         """

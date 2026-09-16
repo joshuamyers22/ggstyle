@@ -20,6 +20,7 @@ PUBLIC_OBJECTS = (
     "ggstyle.facets.FacetCallbackError",
     "ggstyle.facets.FacetGrid",
     "ggstyle.facets.FacetGrid.map",
+    "ggstyle.facets.FacetGrid.dates",
     "ggstyle.facets.FacetGrid.as_dict",
     "ggstyle.facets.FacetGrid.describe",
     "ggstyle.facets.FacetPlan",
