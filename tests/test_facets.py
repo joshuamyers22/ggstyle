@@ -248,6 +248,30 @@ def test_pandas_and_polars_plans_match() -> None:
     ]
 
 
+def test_polars_categorical_levels_use_first_seen_order_without_nulls() -> None:
+    polars = pytest.importorskip("polars")
+    frame = polars.DataFrame({"g": ["B", "A", "B", None]}).with_columns(
+        polars.col("g").cast(polars.Categorical)
+    )
+
+    plan = gs.facet_plan(frame, col="g", missing="drop", include_unobserved=True)
+
+    assert plan.col_levels == ("B", "A")
+    assert [panel.indices for panel in plan.panels] == [(0, 2), (1,)]
+
+
+def test_polars_enum_levels_retain_declared_unobserved_panels() -> None:
+    polars = pytest.importorskip("polars")
+    frame = polars.DataFrame(
+        {"g": polars.Series(["B", "A"], dtype=polars.Enum(["A", "B", "C"]))}
+    )
+
+    plan = gs.facet_plan(frame, col="g", include_unobserved=True)
+
+    assert plan.col_levels == ("A", "B", "C")
+    assert [panel.indices for panel in plan.panels] == [(1,), (0,), ()]
+
+
 def test_lazy_polars_and_mismatched_mapping_columns_are_rejected() -> None:
     polars = pytest.importorskip("polars")
     with pytest.raises(TypeError, match="call collect"):
