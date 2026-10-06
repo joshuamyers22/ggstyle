@@ -643,7 +643,7 @@ def _declared_levels(source: object, *, variable: str) -> tuple[object, ...] | N
         categories = cast(Any, dtype).categories
         return _unique(cast(Iterable[object], categories), variable=variable)
     if type(dtype).__name__ == "Categorical":
-        categories = cast(Any, source).cat.get_categories()
+        categories = cast(Any, source).unique(maintain_order=True).drop_nulls()
         return _unique(categories.to_list(), variable=variable)
     return None
 

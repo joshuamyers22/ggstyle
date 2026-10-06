@@ -107,8 +107,9 @@ A wrap plan uses one column and a maximum number of layout columns:
    plan.panels[0].values
    plan.panels[0].indices
 
-Levels use stable first-seen order for ordinary columns. Pandas categorical and Polars
-categorical/enum columns preserve their declared order. Pass ``col_order=`` to make that
+Levels use stable first-seen order for ordinary columns and Polars categorical columns.
+Pandas categorical and Polars enum columns preserve their declared order, including
+unobserved levels when requested. Pass ``col_order=`` to make that
 order independent of frame metadata. Observed levels are retained by default;
 ``include_unobserved=True`` creates empty panels for declared levels with no rows.
 

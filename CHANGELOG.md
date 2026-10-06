@@ -4,6 +4,8 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Test with Polars 2.0.0 and use observed first-seen categorical facet levels; Enum facets retain declared unobserved levels.
+
 - Add pure immutable `facet_plan()` partition and layout planning for one-variable wraps
   and row/column grids. Plans define stable categorical ordering, observed/unobserved and
   missing-value policy, empty panels, fixed/free scale intent, strict-JSON inspection,
